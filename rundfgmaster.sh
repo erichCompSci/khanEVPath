@@ -1,1 +1,1 @@
-./bin/dfg_master src/mytest.cfg
+./bin/dfg_master src/mytest2.cfg

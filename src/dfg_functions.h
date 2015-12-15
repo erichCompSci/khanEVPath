@@ -1,4 +1,3 @@
-
 #ifndef DFG_FUNCTIONS_H
 #define DFG_FUNCTIONS_H
 
@@ -16,7 +15,7 @@
 #define MAXNODES 25
 #define MAXSTONES 25
 // The code below is to be merged with Akash's code
-typedef enum {SOURCE, SINK, PYTHON} stone_type_t;
+typedef enum {SOURCE, SINK, PYTHON, BUCKETROLL, BUCKETSLIDE} stone_type_t;
 typedef struct _stone_struct {
     std::string node_name;
     std::string stone_name;

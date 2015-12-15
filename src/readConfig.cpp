@@ -35,7 +35,11 @@ int config_read_type(const ConfigParser_t & cfg, std::string stone_section, ston
         what_type = PYTHON;
         return 1;
     }
-    else
+    else if(!temp.compare("bucketroll"))
+    {
+        what_type = BUCKETROLL;
+        return 1;
+    }
     {
         log_err("Unidentified stone_type of value %s", temp.c_str());
         return 0;

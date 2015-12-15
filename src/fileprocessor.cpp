@@ -125,6 +125,12 @@ int process_python_code(std::string py_script, std::string py_function, std::str
       log_err("Failed to insert into database value");
       return 0;
   }
+
+  std::string destroy = "Destroy";
+  call_pyfunc(destroy.c_str(), pInstance, "", "", "");
+  log_info("Delete called");
+  Py_DECREF(pArgs);
+  Py_DECREF(pInstance);
   return 1;
 }
 

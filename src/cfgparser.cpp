@@ -181,7 +181,7 @@ int ConfigParser_t::readFile(const string &fname) {
         path = fname.substr(0 , i + 1); /*found*/
 
     /* open config file */
-    log_info("Reading config file '%s'", fname.c_str());
+    //log_info("Reading config file '%s'", fname.c_str());
     fpvec.push_back(fopen(fname.c_str(), "rb"));
     if (fpvec.back() == NULL)
     {
@@ -280,7 +280,7 @@ int ConfigParser_t::readFile(const string &fname) {
             if (ent.name[0] != '/')
                 ent.name = path + ent.name; /*rel path*/
             /* open included file */
-            log_info("Including config file '%s'", ent.name.c_str() + 9);
+            //log_info("Including config file '%s'", ent.name.c_str() + 9);
             fpvec.push_back(fopen(ent.name.c_str(), "rb"));
             if (fpvec.back() == NULL)
             {
@@ -332,15 +332,15 @@ int ConfigParser_t::readFile(const string &fname) {
             if (!ent.name.empty())
             {
                 /* insert entry into config object */
-                log_info("Config option [%s] '%s' = '%s'",
-                        ent.section.c_str(), ent.name.c_str(),
-                        ent.value.c_str());
+                //log_info("Config option [%s] '%s' = '%s'",
+                //        ent.section.c_str(), ent.name.c_str(),
+                //        ent.value.c_str());
                 entry.push_back(ent);
             }
         }
     }
     /* success */
-    log_info("Config file read successfully");
+    //log_info("Config file read successfully");
     return 0;
 }
 
@@ -366,8 +366,8 @@ int ConfigParser_t::getValue(string section, string name, string *value) const {
         if (section == entry[i].section && name == entry[i].name)
         {
             /* entry found */
-            log_info("Get config value [%s] '%s' = '%s'",
-                    section.c_str(), name.c_str(), entry[i].value.c_str());
+            //log_info("Get config value [%s] '%s' = '%s'",
+            //        section.c_str(), name.c_str(), entry[i].value.c_str());
             /* if not null, assign value */
             if (value != NULL)
                 *value = entry[i].value;
@@ -412,7 +412,7 @@ int ConfigParser_t::getValue(string section, string name, int *value) const {
             if (value != NULL)
                 *value = i;
             /* debug */
-            log_info("Integer value %d", i);
+            //log_info("Integer value %d", i);
             return 1;
         }
     }
@@ -452,7 +452,7 @@ int ConfigParser_t::getValue(string section, string name, double *value) const {
             if (value != NULL)
                 *value = d;
             /* debug */
-            log_info("Double value %f", d);
+            //log_info("Double value %f", d);
             return 1;
         }
     }
@@ -486,8 +486,8 @@ int ConfigParser_t::getValue(
         /* compare section and entry name */
         if (section == entry[i].section && name == entry[i].name) {
             /* entry found */
-            log_info("Get config value [%s] '%s' = '%s'",
-                    section.c_str(), name.c_str(), entry[i].value.c_str());
+            //log_info("Get config value [%s] '%s' = '%s'",
+            //        section.c_str(), name.c_str(), entry[i].value.c_str());
             /* if not null, assign value */
             if (value != NULL) {
                 if (first) {
@@ -547,12 +547,12 @@ int ConfigParser_t::getValue(string section, string name, bool *value) const {
         // determine boolean val
         if ((val == "1") || (val == "yes") || (val == "true")
                 || (val == "on")) {
-            log_info( "Boolean value <true>.");
+            //log_info( "Boolean value <true>.");
             *value = true;
             return 1;
         } else if ((val == "0") || (val == "no") || (val == "false")
                 || (val == "off")) {
-            log_info( "Boolean value <false>.");
+            //log_info( "Boolean value <false>.");
             *value = false;
             return 1;
         }
@@ -564,11 +564,11 @@ int ConfigParser_t::getValue(string section, string name, bool *value) const {
 
 std::multimap<std::string, std::string> ConfigParser_t::getOptions(const std::string &section) const
 {
-    log_info("Looking for options of section '%s'", section.c_str());
+    //log_info("Looking for options of section '%s'", section.c_str());
     std::multimap<std::string, std::string> retval;
     for (std::vector<struct entry_s>::const_iterator anEntry = entry.begin(); anEntry != entry.end(); ++anEntry) {
         if (anEntry->section == section) {
-            log_info("Adding option '%s' with value '%s'", anEntry->name.c_str(), anEntry->value.c_str());
+            //log_info("Adding option '%s' with value '%s'", anEntry->name.c_str(), anEntry->value.c_str());
             retval.insert(std::make_pair(anEntry->name, anEntry->value));
         }
     }
