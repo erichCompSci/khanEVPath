@@ -26,13 +26,17 @@ typedef struct _simple_stone_holder
 
 } simp_stone, * simp_stone_ptr;
 
+typedef struct _python_sink_handler
+{
+  std::
+
 
 EVclient test_client;
 EVsource source_handles[MAX_SOURCES];
 EVsource activate_source_handle;
 std::string script_name[MAX_SOURCES];
 std::string method_name[MAX_SOURCES];
-std::string sink_handlers[MAX_SOURCES];
+//std::string sink_handlers[MAX_SOURCES];
 std::vector < std::string > servers;
 std::vector < std::string > server_ids;
 std::vector<std::pair<std::string, std::string> > python_master_list;
@@ -364,7 +368,8 @@ int main(int argc, char **argv)
     }
     for_comparison = ordered_stone_info.size();
             
-    /*for(std::vector<simp_stone>::iterator I = ordered_stone_info.begin(), E = ordered_stone_info.end(); I != E; ++I)
+    /*
+    for(std::vector<simp_stone>::iterator I = ordered_stone_info.begin(), E = ordered_stone_info.end(); I != E; ++I)
     {
         printf("The name of pystone: %s\n", (*I).name.c_str());
         printf("List of incoming stones: ");
@@ -381,7 +386,7 @@ int main(int argc, char **argv)
             printf("%s,\t", (*II).c_str());
         printf("\n");
     }
-    exit(1);
+    //exit(1);
     for(int i = 0; script_name[i].compare("") && i < MAX_SOURCES; ++i)
         printf("The value of script_name %d: %s\n", i, script_name[i].c_str());
 
@@ -390,8 +395,9 @@ int main(int argc, char **argv)
 
     for(std::vector<std::string>::iterator I = handler_names.begin(), E = handler_names.end(); I != E; ++I)
         printf("The value of a handler name: %s\n", (*I).c_str());
+    
+    exit(0);
     */
-    //exit(0);
 
     if(num_of_sources > 0)
     {
