@@ -40,7 +40,7 @@ int init_database_values(simple_rec & data)
     }
 
     original_fp = data.file_path; 
-    shared_fn = "/dev/shm/" + original_fp.substr(49, strlen(data.file_path) - 49);
+    shared_fn = "/dev/shm/" + original_fp.substr(54, strlen(data.file_path) - 54);
 
     log_info("Extract attributed for %s", shared_fn.c_str());
     std::string ext = strrchr(original_fp.c_str(),'.')+1;
@@ -472,8 +472,6 @@ int main(int argc, char *argv[])
             log_err("Error in initializing database values for %s", data.file_path);
             exit(1);
         }
-        //Set Metadata value to 0
-        data.meta_compare_py = 0;
 
         EVsubmit(source_handle, &data, NULL);
 
