@@ -50,12 +50,53 @@ int config_read_type(const ConfigParser_t & cfg, std::string stone_section, ston
 
 int config_read_incoming(const ConfigParser_t & cfg, std::string stone_section, std::vector<std::string> & incoming_list)
 {
-    if(!cfg.getValue(stone_section, "incoming", &incoming_list))
+  std::vector<std::string> temp_string_vec;
+  if(!cfg.getValue(stone_section, "incoming", &temp_string_vec))
+  {
+      log_err("Failure to return correct incoming list from %s", stone_section.c_str());
+      return 0;
+  }
+
+  /*This logic is a hack to give us "stone:stone:stone" config file option*/
+
+  for(int i = 0; i < temp_string_vec.size(); ++i)
+  {
+    std::string check(temp_string_vec[i]);
+    if(check.find(':') == std::string::npos)
     {
-        log_err("Failure to return correct incoming list from %s", stone_section.c_str());
-        return 0;
+      incoming_list.push_back(check);
     }
-    return 1;
+    else
+    {
+      std::size_t found_at_first = 0;
+      std::size_t found_at_second = 0;
+      while(found_at_first != std::string::npos)
+      {
+        found_at_second = check.find(':', found_at_first);
+        if(found_at_second != std::string::npos)
+        {
+          std::string temp_value = check.substr(found_at_first, found_at_second - found_at_first);
+          incoming_list.push_back(temp_value);
+          found_at_first = found_at_second + 1;
+        }
+        else
+        {
+          std::string temp_value = check.substr(found_at_first);
+          incoming_list.push_back(temp_value);
+          found_at_first = found_at_second;
+        }
+      }
+    }
+  }
+
+  printf("The incoming stones for %s are: ", stone_section.c_str());
+  for(int i = 0; i < incoming_list.size(); ++i)
+  {
+    printf("%s ", incoming_list[i].c_str());
+  }
+  printf("\n");
+
+  return 1;
 }
 
 
