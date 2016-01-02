@@ -6,6 +6,8 @@
 #include <fcntl.h>
 #include <iostream>
 #include <sstream>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include "evpath.h"
 #include "ev_dfg.h"
 #include "dfg_functions.h"
@@ -83,7 +85,7 @@ void file_receive(simple_rec_ptr event, python_sink_handler_ptr python_info){
   }
   
   // FIXME:Need to make a more dynamic way of doing this, rather than hard
-  // coding this in the future.
+  // coding this in the future. This has to be done for python code I think.
   std::string filepath (event->file_path);
   //49 is the length of the server name, the path name up to "data"
   //10 is the length of the im7 file name
@@ -92,9 +94,15 @@ void file_receive(simple_rec_ptr event, python_sink_handler_ptr python_info){
 
   log_info("Dir name %s", dir_name.c_str());
 
-  _mkdir(("/dev/shm/" + dir_name).c_str());
+  struct stat info;
+  if(stat (("/dev/shm/" + dir_name).c_str(), &info) != 0)
+    _mkdir(("/dev/shm/" + dir_name).c_str());
+  else
+    log_info("Already made directory for %s", ("/dev/shm/" + dir_name).c_str());
 
-  if(event->file_buf != NULL) {
+
+  struct stat info2;
+  if(event->file_buf != NULL && (stat (file_name.c_str(), &info2) != 0)) {
 
     FILE* pFile = fopen(file_name.c_str(), "wb");
 
@@ -108,10 +116,13 @@ void file_receive(simple_rec_ptr event, python_sink_handler_ptr python_info){
       log_err("Something wrong writing to file");
     }
   }
+  else
+    log_info("The data is empty or the file already exists in the shared memory folder.");
+
   char * database_id = event->db_id;
   // Process attribute for python
   process_python_code(python_info->py_file, python_info->py_method, file_name, database_id);
-  unlink(file_name.c_str());
+  //unlink(file_name.c_str());
 
 }
 

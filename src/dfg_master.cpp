@@ -304,7 +304,7 @@ int main(int argc, char *argv[])
     if(dfg_init_func())
     {
       EVmaster_node_join_handler(test_dfg.dfg_master, JoinHandlerFunc);
-      printf("DFG handler read...\n");
+      //printf("DFG handler read...\n");
     }
 
     /*EVsource * master_list_sources = (EVsource *) malloc(sizeof(EVsource) * temp_node_name_list.size());
@@ -489,7 +489,7 @@ int main(int argc, char *argv[])
     /* Cleanup */
     globfree(&files);
 
-    log_info("Shutdown evdfg");
+    //log_info("Shutdown evdfg");
 
     CMrun_network(test_dfg.cm);     
   }  
