@@ -120,4 +120,8 @@ Porting Khan to EVPath http://www.cc.gatech.edu/systems/projects/EVPath/
 
 Some things the developer should know
 
+  Right now only a single python script can be read and manipulated by a process.  Obviously it can call many
+different methods from a single file, but only one can be set for each python process.
 
+  It is important to note that Python 2.7 documentation suggests that you include "Python.h" before any 
+standard includes as it defines some macro variables

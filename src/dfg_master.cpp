@@ -67,11 +67,13 @@ void usage()
   printf("Usage:\n ./dfg_master configfile \n");
 }
 
+/*
 static int setupBucketStone(const ConfigParser_t & cfg, std::string stone_name, stone_struct & bucket_struct)
 {
     bucket_struct.stone_name = stone_name;
 
 }
+*/
 
 //  Does making this static do, what I think its doing or not because its C++?
 static int setupPythonStones(const ConfigParser_t & cfg, std::string prev_name, 
@@ -240,13 +242,15 @@ int main(int argc, char *argv[])
       }
       else if(new_stone_struct.stone_type == BUCKETROLL)
       {
+        /*
         if(!setupBucketStone(cfg, *I, new_stone_struct))
         {
             log_err("Error: failed to setup bucket stone");
             exit(1);
         }
         stone_holder.push_back(new_stone_struct);
-
+        */
+        exit(1);
       }
       else
       {

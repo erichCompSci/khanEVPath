@@ -1,10 +1,12 @@
 #ifndef KHAN_FFS
 #define KHAN_FFS
 
+/*
 typedef struct _python_list {
     int dynamic_size;
     int* ordered_method_list;
 } python_list, *python_list_ptr;
+*/
 
 typedef struct _simple_rec {
   int exp_id;
@@ -24,6 +26,7 @@ static FMField simple_field_list[] =
   {NULL, NULL, 0, 0}
 };
 
+/*
 static FMField python_list_field_list[] = 
 {
     {"dynamic_size", "integer", sizeof(int), FMOffset(python_list_ptr, dynamic_size)},
@@ -36,7 +39,7 @@ static FMStructDescRec python_format_list[] =
     {"python_list", python_list_field_list, sizeof(python_list), NULL},
     {NULL, NULL}
 };
-
+*/
 static FMStructDescRec simple_format_list[] =
 {
   {"simple", simple_field_list, sizeof(simple_rec), NULL},

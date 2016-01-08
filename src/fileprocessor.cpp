@@ -1,5 +1,4 @@
 #include "Python.h"
-
 #include <stdio.h>
 #include <string>
 #include <string.h>
@@ -111,7 +110,6 @@ int process_python_code(std::string py_script, std::string py_function, std::str
 
   //Get the database file_id
 
-  init_python_processing(py_script);
   PyObject *pFile, *pArgs, *pInstance;
   pFile = PyString_FromString(file_path.c_str());
   pArgs = PyTuple_New(1);

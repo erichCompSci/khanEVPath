@@ -1,3 +1,4 @@
+#include "Python.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -14,7 +15,6 @@
 #include "khan_ffs.h"
 #include "khan.h"
 #include "readConfig.h"
-#include "Python.h"
 #include "fileprocessor.h"
 
 #define MAX_SOURCES 20
@@ -40,12 +40,7 @@ typedef struct _python_sink_handler
 
 
 EVclient test_client;
-//EVsource source_handles[MAX_SOURCES];
 python_sink_handler sink_details[MAX_SOURCES];
-//EVsource activate_source_handle;
-//std::string script_name[MAX_SOURCES];
-//std::string method_name[MAX_SOURCES];
-//std::string sink_handlers[MAX_SOURCES];
 std::vector < std::string > servers;
 std::vector < std::string > server_ids;
 std::vector<std::pair<std::string, std::string> > python_master_list;
@@ -153,18 +148,6 @@ python_general_handler(CManager cm, void *vevent, void *client_data, attr_list a
 }
 
 static int
-python_list_handler(CManager cm, void *vevent, void *client_data, attr_list attrs)
-{
-    printf("Received the event\n");
-    python_list_ptr event = (python_list_ptr)vevent;
-    for(int i = 0; i < 4; ++i)
-        printf("The int is: %d\n", event->ordered_method_list[i]);
-
-    return 1;
-
-}
-
-static int
 general_handler(CManager cm, void *vevent, void *client_data, attr_list attrs)
 {
     printf("Received an event\n");
@@ -211,11 +194,17 @@ int main(int argc, char **argv)
     unsigned int num_of_sources = 0;
     unsigned int num_py_stones = 0;
      
+    /*I'm going to hijack the first python instance and store the python 
+      file name in a variable here.  This is not pretty and very hacky,
+      but I'm on a deadline so I'll come back and change it later if I 
+      have to...I also argue that this was always the functional case
+      it just wasn't explicit*/
+    std::string python_script_file_name;
+    int first_python_stone_found = 0;
 
     for(std::vector<std::string>::iterator I = stone_names.begin(), E = stone_names.end(); I != E; ++I)
     {
         log_info("Stone: %s", I->c_str());
-        //continue;
         std::string temp_node_name;
         stone_type_t temp_type;
         std::string temp_handler_name;
@@ -242,6 +231,7 @@ int main(int argc, char **argv)
           exit(1);
         }
 
+
         /* If type is a python type, create a unique sink and source handler name
            Otherwise, just do the normal naming convention */ 
         if(temp_type == PYTHON)
@@ -264,6 +254,20 @@ int main(int argc, char **argv)
                 log_err("Could not read script file name for %s", (*I).c_str());
                 exit(1);
             }
+            
+            /*This is where I'm doing the hacky bookkeeping*/
+            if(!first_python_stone_found)
+            {
+              python_script_file_name = sink_details[num_py_stones].py_file;
+              first_python_stone_found = 1;
+            }
+            else if(sink_details[num_py_stones].py_file.compare(python_script_file_name))
+            {
+              log_err("A process is only allowed to have a single Python Script per \"node\"\n"
+                      "The two filenames are: %s and %s", sink_details[num_py_stones].py_file.c_str(), python_script_file_name.c_str());
+              exit(1);
+            }
+
 
             if(!config_read_method_name(cfg_slave, *I, sink_details[num_py_stones].py_method))
             {
@@ -315,6 +319,9 @@ int main(int argc, char **argv)
     std::string hostname = "localhost";
     int port = 6379;
     init_database_from_client(hostname, port);
+
+    /*Initialize python interpreter always (no real need not to yet)*/
+    init_python_processing(python_script_file_name);
 
 	if (EVclient_ready_wait(test_client) != 1) {
 	/* dfg initialization failed! */

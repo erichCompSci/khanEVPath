@@ -59,7 +59,7 @@ int config_read_incoming(const ConfigParser_t & cfg, std::string stone_section, 
 
   /*This logic is a hack to give us "stone:stone:stone" config file option*/
 
-  for(int i = 0; i < temp_string_vec.size(); ++i)
+  for(unsigned int i = 0; i < temp_string_vec.size(); ++i)
   {
     std::string check(temp_string_vec[i]);
     if(check.find(':') == std::string::npos)
@@ -90,7 +90,7 @@ int config_read_incoming(const ConfigParser_t & cfg, std::string stone_section, 
   }
 
   printf("The incoming stones for %s are: ", stone_section.c_str());
-  for(int i = 0; i < incoming_list.size(); ++i)
+  for(unsigned int i = 0; i < incoming_list.size(); ++i)
   {
     printf("%s ", incoming_list[i].c_str());
   }
