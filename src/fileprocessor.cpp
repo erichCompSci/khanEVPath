@@ -110,10 +110,8 @@ int process_python_code(std::string py_script, std::string py_function, std::str
 
   //Get the database file_id
 
-  PyObject *pFile, *pArgs, *pInstance;
-  pFile = PyString_FromString(file_path.c_str());
-  pArgs = PyTuple_New(1);
-  PyTuple_SetItem(pArgs, 0, pFile);
+  PyObject *pArgs, *pInstance;
+  pArgs = Py_BuildValue("(s)", file_path.c_str());
   pInstance = PyObject_CallObject(pClass, pArgs);
   
   std::string res = call_pyfunc(py_function, pInstance, "", "", "");

@@ -125,3 +125,10 @@ different methods from a single file, but only one can be set for each python pr
 
   It is important to note that Python 2.7 documentation suggests that you include "Python.h" before any 
 standard includes as it defines some macro variables
+
+To make calls to the Khan file you need:
+      1) to get the Module object, the Khan.py code itself
+      2) to get the Khan class reference itself from the Khan.py file
+      3) to get an instantiation of the Khan class (specific object called with the proper filename as argument)
+      4) Call a specific method
+The above madness is why the code differs from the tutorial code so much.
