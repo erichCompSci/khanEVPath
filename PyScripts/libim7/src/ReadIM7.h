@@ -60,8 +60,10 @@ typedef struct		// image file header (256 Bytes) for DaVis 7
 
 
 // Returns error code ImReadError_t, can read IM7, VC7 and IMX, IMG, VEC
-extern "C" int EXPORT ReadIM7 ( const char* theFileName, BufferType* myBuffer, AttributeList** myList );
-extern "C" int EXPORT WriteIM7 ( const char* theFileName, bool isPackedIMX, BufferType* myBuffer );
+extern "C" int ReadIM7 ( const char* theFileName, BufferType* myBuffer, AttributeList** myList );
+extern "C" int WriteIM7 ( const char* theFileName, bool isPackedIMX, BufferType* myBuffer );
 
+// This Code is intended to attempt to read the above type of files that already exist in memory into our objects
+extern "C" int ReadIM7_MEM ( char* mem_address, BufferType* myBuffer, AttributeList** myList, int file_size );
 
 #endif //__READIM7_H

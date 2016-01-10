@@ -389,6 +389,7 @@ errexit:
 }
 
 
+
 extern "C" int EXPORT ReadIMX ( const char* theFileName, BufferType* myBuffer, AttributeList** myList )
 {
 	image_header header;
@@ -513,6 +514,140 @@ errexit:
 
 
 
+extern "C" int EXPORT ReadIMX_MEM ( char* mem_address, BufferType* myBuffer, AttributeList** myList, int file_size )
+{
+	image_header header;
+  char * payload_data = mem_address;
+
+  if(!mem_address || file_size < 0)
+    return IMREAD_ERR_FILEOPEN;
+
+	// Read an image in our own IMX or IMG or VEC or VOL format
+	int theNX,theNY,theNZ,theNF;
+	// read and store file header contents
+  memcpy ((char *)&header, mem_address, sizeof(header));
+  payload_data += sizeof(header);
+
+	int itsVersion	= header.version;
+	//itsDate		= header.date;
+	//itsTime		= header.time;
+
+   // scales
+   char olddim[12], oldunit[12];
+   strncpy(olddim,header.xdim,11); olddim[11]=0;
+   strncpy(oldunit,header.xunits,11); oldunit[11]=0;
+	SetBufferScale( &myBuffer->scaleX, header.xa, header.xb, olddim, oldunit );
+   strncpy(olddim,header.ydim,11); olddim[11]=0;
+   strncpy(oldunit,header.yunits,11); oldunit[11]=0;
+	SetBufferScale( &myBuffer->scaleY, header.ya, header.yb, olddim, oldunit );
+   strncpy(olddim,header.idim,11); olddim[11]=0;
+   strncpy(oldunit,header.iunits,11); oldunit[11]=0;
+	SetBufferScale( &myBuffer->scaleI, header.ia, header.ib, olddim, oldunit );
+
+	// copy the comments. Before copying them to CStrings,
+	// add zeros after the last characters in case it has the max. length (40)
+   /*
+	c1 = header.com1[40], c2 = header.com2[40];		// (= access out of bounds)
+	header.com1[40] = 0; itsComment = header.com1; header.com1[40] = c1;
+	header.com2[40] = 0;
+   if (strlen(header.com2)>0) {
+      itsComment += "\n";
+      itsComment += header.com2;
+   }
+   header.com2[40] = c2;
+   */
+
+	if (itsVersion > 99)		// old versions; the new numbers lie between 40 and 99
+	{	// make old data file formats compatible with version 3.0 and higher
+		if ( itsVersion < 210 )								// = version 2.1
+		{	header.columns	= 384;	                  // image size
+			header.rows		= 286;
+			header.xstart  = header.ystart  = 0;		// image shift
+			header.com1[0] = header.com2[0] = 0;		// comment
+		}
+		//if ( itsVersion < 120 )								// = version 1.2
+		//	itsDate = itsTime = NULLString;				// date + time
+	}
+
+	// set new size and type and allocate pixbuf memory
+	//Resize (header.columns, header.rows, IsFloat(), FALSE);
+   if (header.imagetype==40)
+	{
+      return IMREAD_ERR_FORMAT;
+   }
+      
+   theNF = ((itsVersion>=VER_EXTHEADER && itsVersion<100) ? header.f_dim : 1);
+   theNY = (header.rows==-1 ? header.longRows : header.rows);
+	theNX = (header.columns==-1 ? header.longColumns : header.columns);
+	theNZ = ((itsVersion>=VER_VOLUME_BUFFER && itsVersion<100) ? header.longZDim : 1);
+
+	if ( header.imagetype == IMAGE_SPARSE_WORD || header.imagetype == IMAGE_SPARSE_FLOAT )
+	{
+      return IMREAD_ERR_FORMAT;
+   }
+
+	if (itsVersion<VER_VOLUME_BUFFER || itsVersion>=100)
+	{
+		theNY /= theNF;
+		CreateBuffer( myBuffer, theNX, theNY, theNZ, theNF, header.imagetype==IMAGE_FLOAT, header.vector_grid, (BufferFormat_t)header.image_sub_type );
+	}
+	else
+	{
+		CreateBuffer( myBuffer, theNX,theNY,theNZ,theNF, header.imagetype==IMAGE_FLOAT, header.vector_grid, (BufferFormat_t)header.image_sub_type );
+	}
+
+	if (header.imagetype == IMAGE_IMX)				// compressed (IMX) file ?
+	{
+    fprintf(stderr, "We do not currently support reading this imagetype from memory!\n");
+    exit(1);
+		/*ImReadError_t err = SCPackOldIMX_Read(theFile,myBuffer);
+		if (err!=IMREAD_ERR_NO)
+		{
+			fclose(theFile);
+			return err;
+		}
+    */
+	}			
+	else    // no compression
+	{
+		for (int row=0; row<myBuffer->totalLines; row++)
+		{
+			if (myBuffer->isFloat)
+      {
+        memcpy(&myBuffer->floatArray[row*myBuffer->nx], payload_data, sizeof(float) * myBuffer->nx);
+        payload_data += sizeof(float) * myBuffer->nx;
+				//fread( &myBuffer->floatArray[row*myBuffer->nx], sizeof(float), myBuffer->nx, theFile );
+      }
+			else
+      {
+        memcpy(&myBuffer->wordArray[row*myBuffer->nx], payload_data, sizeof(Word) * myBuffer->nx);
+        payload_data += sizeof(Word) * myBuffer->nx;
+				//fread( &myBuffer->wordArray[row*myBuffer->nx], sizeof(Word), myBuffer->nx, theFile );
+      }
+		}
+	}
+
+   int bytes_left = payload_data - mem_address;
+   bytes_left = file_size - bytes_left;
+   if(bytes_left < 0)
+   {
+     fprintf(stderr, "Error: somehow there are negative bytes left.  Bookeeeping has failed somewhere!\n");
+     exit(1);
+   }
+
+   if (myList)
+	{
+      ReadImgAttributes_MEM(payload_data,myList, bytes_left);
+   }
+
+   return IMREAD_ERR_NO;
+
+errexit:
+   //fclose(theFile);
+   return IMREAD_ERR_DATA;
+}
+
+
 /*****************************************************************************/
 // Read and write attributes
 /*****************************************************************************/
@@ -584,11 +719,14 @@ void Attribute_BreakToNull( char* data, int size )
 int ReadImgAttributes( FILE* theFile, AttributeList** myList )
 {
     image_extheader item;
+    int total_bytes_left = 0;
     while (fread((char*)&item,1,sizeof(item),theFile))
 	{
+        total_bytes_left += 8;
         char* data = NULL;
         if (item.size>0)
 		{
+        printf("Item.size_file: %d\n", item.size);
             data = (char*)malloc(item.size+1);
             data[item.size] = 0; // final 0-byte for strings
             if (!fread(data,1,item.size,theFile))
@@ -596,6 +734,94 @@ int ReadImgAttributes( FILE* theFile, AttributeList** myList )
 			    free(data);
                 return -1;  // "extended header: no tag data"
 		    }
+        total_bytes_left += item.size;
+        }
+		if (data)
+		{
+			switch (item.type) {
+			case IEH_END:
+				break;
+			case IEH_SCALE_X:
+				Attribute_NullToBreak(data,item.size);
+				SetAttribute(myList,"_SCALE_X",data);
+				break;
+			case IEH_SCALE_Y:
+				Attribute_NullToBreak(data,item.size);
+				SetAttribute(myList,"_SCALE_Y",data);
+				break;
+			case IEH_SCALE_Z:
+				Attribute_NullToBreak(data,item.size);
+				SetAttribute(myList,"_SCALE_Z",data);
+				break;
+			case IEH_SCALE_I:
+				Attribute_NullToBreak(data,item.size);
+				SetAttribute(myList,"_SCALE_I",data);
+				break;
+			case IEH_SCALE_F:
+				Attribute_NullToBreak(data,item.size);
+				SetAttribute(myList,"_SCALE_F",data);
+				break;
+			case IEH_COMMENT:
+				SetAttribute(myList,"_COMMENT",data);
+				break;
+			case IEH_TIME:
+				SetAttribute(myList,"_TIME",data);
+				break;
+			case IEH_DATE:
+				SetAttribute(myList,"_DATE",data);
+				break;
+			case IEH_ATTRIBUTE:
+            {
+                char* value_pos = strchr(data,'=');
+                if (value_pos)
+				{
+                    *value_pos = '\0';
+                    SetAttribute( myList, data, value_pos+1 );
+                }
+                break;
+            }
+            default:
+            {
+                break;
+            }
+            }
+		    free(data);
+		}
+   }
+   printf("Total bytes left in file: %d\n", total_bytes_left);
+   return 0;
+}
+
+
+
+int ReadImgAttributes_MEM( char* payload, AttributeList** myList, int bytes_left )
+{
+    image_extheader item;
+    //while (fread((char*)&item,1,sizeof(item),theFile))
+    printf("Bytes left: %d\n", bytes_left);
+    while (bytes_left >= 8) //Just trying not to rampage over memory too much.
+	{
+        memcpy((char*)&item, payload, sizeof(item));
+    //printf("Ran through the loop once!\n");
+        printf("Item.size_mem: %d\n", item.size);
+        bytes_left -= sizeof(item);
+        payload += sizeof(item);
+        char* data = NULL;
+        //printf("Size of item: %d\tBytes left: %d\n", sizeof(item), bytes_left);
+        if (item.size>0)
+		{
+            data = (char*)malloc(item.size+1);
+            data[item.size] = 0; // final 0-byte for strings
+            if(bytes_left < item.size)
+            {
+              free(data);
+              printf("Extended header: no tag data\n");
+              return -1; // "extended header: no tag data"
+            }
+            memcpy(data, payload, item.size);
+            payload += item.size;
+            bytes_left -= item.size;
+
         }
 		if (data)
 		{
@@ -651,7 +877,6 @@ int ReadImgAttributes( FILE* theFile, AttributeList** myList )
    }
    return 0;
 }
-
 
 void WriteAttribute_ITEM( FILE* theFile, type_extheader t, int l, const char* d )
 {   

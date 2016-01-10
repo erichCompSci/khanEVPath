@@ -100,15 +100,16 @@ enum	Image_t	// type in header of IMX files
 
 Byte* Buffer_GetRowAddrAndSize( BufferType* myBuffer, int theRow, unsigned long &theRowLength );
 int  CreateBuffer( BufferType* myBuffer, int theNX, int theNY, int theNZ, int theNF, int isFloat, int vectorGrid, BufferFormat_t imageSubType );
-extern "C" void EXPORT SetBufferScale( BufferScaleType* theScale, float theFactor, float theOffset, const char* theDesc, const char* theUnit );
+extern "C" void SetBufferScale( BufferScaleType* theScale, float theFactor, float theOffset, const char* theDesc, const char* theUnit );
 
 //! Destroy the data structure creacted by ReadIMX().
-extern "C" void EXPORT DestroyBuffer( BufferType* myBuffer );
-extern "C" void EXPORT DestroyAttributeList( AttributeList** myList );
+extern "C" void DestroyBuffer( BufferType* myBuffer );
+extern "C" void DestroyAttributeList( AttributeList** myList );
 
 void WriteAttribute_END( FILE *theFile );
 
 int ReadImgAttributes( FILE* theFile, AttributeList** myList );
+int ReadImgAttributes_MEM(char * payload, AttributeList** myList, int bytes_left);
 int WriteImgAttributes( FILE* theFile, bool isIM6, AttributeList* myList );
 
 ImReadError_t SCPackOldIMX_Read( FILE* theFile, BufferType* myBuffer );
@@ -117,21 +118,22 @@ int WriteIMX( FILE *theFile, BufferType* myBuffer );
 
 
 // Read file of type IMG/IMX/VEC, returns error code ImReadError_t
-extern "C" int EXPORT ReadIMX ( const char* theFileName, BufferType* myBuffer, AttributeList** myList );
+extern "C" int ReadIMX ( const char* theFileName, BufferType* myBuffer, AttributeList** myList );
+extern "C" int ReadIMX_MEM ( char* mem_address, BufferType* myBuffer, AttributeList** myList, int file_size );
 
 // Write file of type IMG or IMX, returns error code ImReadError_t
-extern "C" int EXPORT WriteIMG( const char* theFileName, BufferType* myBuffer );
-extern "C" int EXPORT WriteIMGX( const char* theFileName, bool isIMX, BufferType* myBuffer );
-extern "C" int EXPORT WriteIMGXAttr( const char* theFileName, bool isIMX, BufferType* myBuffer, AttributeList* myList );
+extern "C" int WriteIMG( const char* theFileName, BufferType* myBuffer );
+extern "C" int WriteIMGX( const char* theFileName, bool isIMX, BufferType* myBuffer );
+extern "C" int WriteIMGXAttr( const char* theFileName, bool isIMX, BufferType* myBuffer, AttributeList* myList );
 
 // Interface for LabView to read IMX files
-extern "C" int EXPORT LabView_OpenIMX		( const char* theFileName, int* theWidth, int* theHeight );
-extern "C" int EXPORT LabView_ReadIMX_u16	( int theHandle, Word* theArray );
-extern "C" int EXPORT LabView_ReadIMX_f32	( int theHandle, float* theArray );
-extern "C" int EXPORT LabView_CloseIMX		( int theHandle );
+extern "C" int LabView_OpenIMX		( const char* theFileName, int* theWidth, int* theHeight );
+extern "C" int LabView_ReadIMX_u16	( int theHandle, Word* theArray );
+extern "C" int LabView_ReadIMX_f32	( int theHandle, float* theArray );
+extern "C" int LabView_CloseIMX		( int theHandle );
 // Interface for LabView to write IMX files. Use theSizeY<0 to store the attributes loaded during Read.
-extern "C" int EXPORT LabView_WriteIMX_u16 ( const char* theFileName, const Word*  theArray, int theSizeX, int theSizeY );
-extern "C" int EXPORT LabView_WriteIMX_f32 ( const char* theFileName, const float* theArray, int theSizeX, int theSizeY );
+extern "C" int LabView_WriteIMX_u16 ( const char* theFileName, const Word*  theArray, int theSizeX, int theSizeY );
+extern "C" int LabView_WriteIMX_f32 ( const char* theFileName, const float* theArray, int theSizeX, int theSizeY );
 
 
 #endif //__READIMX_H

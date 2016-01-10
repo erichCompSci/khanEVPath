@@ -55,6 +55,31 @@ ImReadError_t SCPackUncompressed_Read( FILE* theFile, BufferType* myBuffer, bool
 	return IMREAD_ERR_NO;
 }
 
+ImReadError_t SCPackUncompressed_Read_MEM( char* payload, BufferType* myBuffer, bool p_bBytes)
+{
+	for (int row=0; row<myBuffer->totalLines; row++)
+	{
+		unsigned long destLen = 0;
+		Byte *dest = Buffer_GetRowAddrAndSize(myBuffer,row,destLen);
+
+		if (p_bBytes)
+		{	// read row of bytes
+			destLen /= 2;
+			memcpy(dest,payload,destLen);
+      payload += destLen;
+			// copy bytes into the words
+			Word *pWord = (Word*)dest;
+			for (int i=destLen-1; i>=0; i--)
+				pWord[i] = dest[i];
+		}
+		else
+		{	// read row of words
+			memcpy(dest,payload,destLen);
+      payload += destLen;
+		}
+	}
+	return IMREAD_ERR_NO;
+}
 
 
 ImReadError_t SCPackZlib_Read( FILE* theFile, BufferType* myBuffer )
@@ -100,6 +125,53 @@ ImReadError_t SCPackZlib_Read( FILE* theFile, BufferType* myBuffer )
 
 
 
+ImReadError_t SCPackZlib_Read_MEM( char* payload, BufferType* myBuffer )
+{
+	int sourceLen = 0;
+	Bytef *source = NULL;
+
+	//fread( &sourceLen, sizeof(sourceLen), 1, theFile );
+  memcpy(&sourceLen, payload, sizeof(sourceLen));
+  payload += sizeof(sourceLen);
+
+	source = (Byte*)malloc(sourceLen);
+	if (source==NULL)
+	{
+		return IMREAD_ERR_MEMORY;
+	}
+	//fread( source, 1, sourceLen, theFile );
+  memcpy( source, payload, sourceLen );
+  payload += sourceLen;
+	
+	uLongf destLen = 0;
+	Bytef *dest = Buffer_GetRowAddrAndSize(myBuffer,0,destLen);
+	destLen *= myBuffer->totalLines;
+
+	int err = uncompress( dest, &destLen, source, sourceLen );
+
+	ImReadError_t errret = IMREAD_ERR_NO;
+	switch (err)
+	{
+		case Z_OK:
+			break;
+		case Z_MEM_ERROR:
+			errret = IMREAD_ERR_MEMORY;
+			break;
+		case Z_BUF_ERROR:
+			//"Output buffer too small for uncompressed data!"
+			errret = IMREAD_ERR_MEMORY;
+			break;
+		case Z_DATA_ERROR:
+			// "Compressed data is corrupt!"
+			errret = IMREAD_ERR_DATA;
+			break;
+	}
+
+	free(source);
+	return errret;
+}
+
+
 ImReadError_t SCPackFixedBits_Read( FILE* theFile, BufferType* myBuffer, int theValidBits )
 {
 	if (theValidBits<= 8)
@@ -124,6 +196,7 @@ ImReadError_t SCPackFixedBits_Read( FILE* theFile, BufferType* myBuffer, int the
 		unsigned long destLen = 0;
 		dataPtr = (Word*) Buffer_GetRowAddrAndSize(myBuffer,row,destLen);
 		int nx = myBuffer->nx;
+
 		while (nx>0)
 		{
 			switch (theValidBits)
@@ -181,6 +254,94 @@ ImReadError_t SCPackFixedBits_Read( FILE* theFile, BufferType* myBuffer, int the
 }
 
 
+ImReadError_t SCPackFixedBits_Read_MEM( char** payload, BufferType* myBuffer, int theValidBits )
+{
+	if (theValidBits<= 8)
+		theValidBits =  8;
+	else
+//	if (theValidBits<=10)
+//		theValidBits = 10;
+//	else
+	if (theValidBits<=12)
+		theValidBits = 12;
+//	else
+//	if (theValidBits<=14)
+//		theValidBits = 14;
+	else
+		theValidBits = 16;
+
+	Word *dataPtr;
+	Word array[16];
+
+	for (int row=0; row<myBuffer->totalLines; row++)
+	{
+		unsigned long destLen = 0;
+		dataPtr = (Word*) Buffer_GetRowAddrAndSize(myBuffer,row,destLen);
+		int nx = myBuffer->nx;
+		while (nx>0)
+		{
+			switch (theValidBits)
+			{
+				case 8:
+					//fread( array, sizeof(Word), 1, theFile );
+          memcpy( array, *payload, sizeof(Word));
+          (*payload) += sizeof(Word);
+					if (nx<2)
+					{	// last pixel of a row
+						*dataPtr = (array[0] & 0x00FF);
+						dataPtr++;
+						nx = 0;
+					}
+					else
+					{
+						*dataPtr =  (array[0] & 0x00FF);
+						dataPtr++;
+						*dataPtr = ((array[0] & 0xFF00) >> 8);
+						dataPtr++;
+						nx -= 2;
+					}
+					break;
+				case 10:
+					break;
+				case 12:
+					if (nx<4)
+					{	// last pixel of a row
+						//fread( dataPtr, sizeof(Word), nx, theFile );
+            memcpy( dataPtr, *payload, sizeof(Word) * nx);
+            (*payload) += (sizeof(Word) * nx);
+						nx = 0;
+					}
+					else
+					{	// decompress next 4 pixel
+						//fread( array, sizeof(Word), 3, theFile );
+            memcpy( array, *payload, sizeof(Word) * 3);
+            (*payload) += sizeof(Word) * 3;
+						*dataPtr = (array[0] & 0x0FFF);
+						dataPtr++;
+						*dataPtr = (array[0] >> 12) | ((array[1] & 0x00FF) << 4);
+						dataPtr++;
+						*dataPtr = ((array[1] & 0xFF00) >> 8) | ((array[2] & 0x000F) << 8);
+						dataPtr++;
+						*dataPtr = (array[2] >> 4);
+						dataPtr++;
+						nx -= 4;
+
+					}
+					break;
+				case 14:
+					break;
+				case 16:
+					// read complete line in one step
+					//fread( dataPtr, sizeof(Word), nx, theFile );
+          memcpy( dataPtr, *payload, sizeof(Word) * nx);
+          (*payload) += sizeof(Word) * nx;
+					nx = 0;
+					break;
+			}
+		}
+	}
+	return IMREAD_ERR_NO;
+}
 
 void Scale_Read( const char*theData, BufferScaleType* theScale )
 {
@@ -212,6 +373,7 @@ void Scale_Read( const char*theData, BufferScaleType* theScale )
 
 extern "C" int EXPORT ReadIM7 ( const char* theFileName, BufferType* myBuffer, AttributeList** myList )
 {
+  printf("Reading from a file...\n");
 	FILE* theFile = fopen(theFileName, "rb");
 	// open for binary read
 	if (theFile==NULL)
@@ -227,6 +389,8 @@ extern "C" int EXPORT ReadIM7 ( const char* theFileName, BufferType* myBuffer, A
         return IMREAD_ERR_HEADER;
     }
 
+  printf("Successfully read the header!\n");
+
 	switch (header.version)
 	{
 	    case IMAGE_IMG:
@@ -235,6 +399,7 @@ extern "C" int EXPORT ReadIM7 ( const char* theFileName, BufferType* myBuffer, A
 		case IMAGE_SPARSE_WORD:
 		case IMAGE_SPARSE_FLOAT:
 		case IMAGE_PACKED_WORD:
+      printf("Closing the file...going to READIMX to read\n");
 			fclose(theFile);
 			return ReadIMX(theFileName,myBuffer,myList);
 	}
@@ -244,6 +409,7 @@ extern "C" int EXPORT ReadIM7 ( const char* theFileName, BufferType* myBuffer, A
         fclose(theFile);
         return IMREAD_ERR_FORMAT;
 	}
+  printf("Reading the file in IM7.cpp\n");
 
 	theNX = header.sizeX;
 	theNY = header.sizeY;
@@ -262,15 +428,19 @@ extern "C" int EXPORT ReadIM7 ( const char* theFileName, BufferType* myBuffer, A
 	switch (header.pack_type)
 	{
 		case IM7_PACKTYPE_IMG:
+      printf("Going to SCPackUncompressed_Read...\n");
 			errret = SCPackUncompressed_Read(theFile,myBuffer, header.buffer_format==BUFFER_FORMAT_MEMPACKWORD);
 			break;
 		case IM7_PACKTYPE_IMX:
+      printf("Going to SCPackOldIMX_Read...we do not want to go here\n");
 			errret = SCPackOldIMX_Read(theFile,myBuffer);
 			break;
 		case IM7_PACKTYPE_ZLIB:
+      printf("Going to SCPackZlib_Read...\n");
 			errret = SCPackZlib_Read(theFile,myBuffer);
 			break;
 		case IM7_PACKTYPE_FIXED_12_0:
+      printf("Going to SCPackFixedBits_Read...\n");
 			errret = SCPackFixedBits_Read( theFile, myBuffer, 12 );
 			break;
 		default:
@@ -304,6 +474,108 @@ extern "C" int EXPORT ReadIM7 ( const char* theFileName, BufferType* myBuffer, A
 	return errret;
 }
 
+
+extern "C" int EXPORT ReadIM7_MEM ( char* mem_address, BufferType* myBuffer, AttributeList** myList, int file_size )
+{
+
+	// open for binary read
+	if (mem_address==NULL || file_size < 0)
+	    return IMREAD_ERR_FILEOPEN;
+
+	// Read an image in our own IMX or IMG or VEC or VOL format
+	int theNX,theNY,theNZ,theNF;
+	// read and store file header contents
+	Image_Header_7 header;
+	memcpy((char*)&header, mem_address, sizeof(header));
+  //Not savy enough to know if this failed...so,
+  //from here on out, I'm just going to assume I did it right.
+  char * payload_data = mem_address + sizeof(header);
+
+	switch (header.version)
+	{
+	    case IMAGE_IMG:
+		case IMAGE_IMX:
+		case IMAGE_FLOAT:
+		case IMAGE_SPARSE_WORD:
+		case IMAGE_SPARSE_FLOAT:
+		case IMAGE_PACKED_WORD:
+			return ReadIMX_MEM(mem_address,myBuffer,myList, file_size);
+	}
+
+	if (header.isSparse)
+	{
+        return IMREAD_ERR_FORMAT;
+	}
+
+	theNX = header.sizeX;
+	theNY = header.sizeY;
+	theNZ = header.sizeZ;
+	theNF = header.sizeF;
+	if (header.buffer_format > 0)
+	{	// vector
+		const int compN[] = { 1, 9, 2, 10, 3, 14 };
+		theNY *= compN[header.buffer_format];
+	}
+	bool bFloat = header.buffer_format!=BUFFER_FORMAT_WORD && header.buffer_format!=BUFFER_FORMAT_MEMPACKWORD;
+	CreateBuffer(myBuffer,theNX,theNY,theNZ,theNF,bFloat,header.vector_grid,(BufferFormat_t)header.buffer_format);
+
+	ImReadError_t errret = IMREAD_ERR_NO;
+	//fprintf(stderr,"format=%i pack=%i\n",header.buffer_format,header.pack_type);
+	switch (header.pack_type)
+	{
+		case IM7_PACKTYPE_IMG:
+			errret = SCPackUncompressed_Read_MEM(payload_data, myBuffer, header.buffer_format==BUFFER_FORMAT_MEMPACKWORD);
+			break;
+		case IM7_PACKTYPE_IMX:
+      fprintf(stderr, "This type of file is not currently supported for reading from memory\n");
+      exit(1);
+		case IM7_PACKTYPE_ZLIB:
+      errret = SCPackZlib_Read_MEM(payload_data, myBuffer);
+			break;
+		case IM7_PACKTYPE_FIXED_12_0:
+      printf("The Memory read also correctly goes through this way as well!\n");
+			errret = SCPackFixedBits_Read_MEM( &payload_data, myBuffer, 12 );
+			break;
+		default:
+			errret = IMREAD_ERR_FORMAT;
+	}
+
+  //printf("Value of read after data mem: %d\n", (*((int *) payload_data));
+
+	if (errret==IMREAD_ERR_NO)
+	{
+    int bytes_left = payload_data - mem_address;
+    bytes_left = file_size - bytes_left + 1;
+    printf("Bytes left: %d and file_size: %d\n", bytes_left, file_size);
+    if (bytes_left < 0)
+    {
+      fprintf(stderr, "Error: somehow got a negative bytes left...shouldn't be possible!\n");
+      exit(1);
+    }
+
+		AttributeList* tmpAttrList = NULL;
+		AttributeList** useList = (myList!=NULL ? myList : &tmpAttrList);
+        ReadImgAttributes_MEM(payload_data, useList, bytes_left);
+		AttributeList* ptr = *useList;
+		/*while (ptr!=NULL)*/
+		while (ptr->name!='\x00')
+		{
+			//fprintf(stderr,"%s: %s\n",ptr->name,ptr->value);
+			if (strncmp(ptr->name,"_SCALE_",7)==0)
+			{
+				switch (ptr->name[7])
+				{
+					case 'X':	Scale_Read( ptr->value, &myBuffer->scaleX );	break;
+					case 'Y':	Scale_Read( ptr->value, &myBuffer->scaleY );	break;
+					case 'I':	Scale_Read( ptr->value, &myBuffer->scaleI );	break;
+				}
+			}
+			ptr = ptr->next;
+		}
+   }
+
+	return errret;
+}
 
 extern "C" int EXPORT WriteIM7 ( const char* theFileName, bool isPackedIMX, BufferType* myBuffer )
 {
