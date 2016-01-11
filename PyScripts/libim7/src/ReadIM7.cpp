@@ -373,7 +373,6 @@ void Scale_Read( const char*theData, BufferScaleType* theScale )
 
 extern "C" int EXPORT ReadIM7 ( const char* theFileName, BufferType* myBuffer, AttributeList** myList )
 {
-  printf("Reading from a file...\n");
 	FILE* theFile = fopen(theFileName, "rb");
 	// open for binary read
 	if (theFile==NULL)
@@ -389,7 +388,6 @@ extern "C" int EXPORT ReadIM7 ( const char* theFileName, BufferType* myBuffer, A
         return IMREAD_ERR_HEADER;
     }
 
-  printf("Successfully read the header!\n");
 
 	switch (header.version)
 	{
@@ -399,7 +397,6 @@ extern "C" int EXPORT ReadIM7 ( const char* theFileName, BufferType* myBuffer, A
 		case IMAGE_SPARSE_WORD:
 		case IMAGE_SPARSE_FLOAT:
 		case IMAGE_PACKED_WORD:
-      printf("Closing the file...going to READIMX to read\n");
 			fclose(theFile);
 			return ReadIMX(theFileName,myBuffer,myList);
 	}
@@ -409,7 +406,6 @@ extern "C" int EXPORT ReadIM7 ( const char* theFileName, BufferType* myBuffer, A
         fclose(theFile);
         return IMREAD_ERR_FORMAT;
 	}
-  printf("Reading the file in IM7.cpp\n");
 
 	theNX = header.sizeX;
 	theNY = header.sizeY;
@@ -428,19 +424,15 @@ extern "C" int EXPORT ReadIM7 ( const char* theFileName, BufferType* myBuffer, A
 	switch (header.pack_type)
 	{
 		case IM7_PACKTYPE_IMG:
-      printf("Going to SCPackUncompressed_Read...\n");
 			errret = SCPackUncompressed_Read(theFile,myBuffer, header.buffer_format==BUFFER_FORMAT_MEMPACKWORD);
 			break;
 		case IM7_PACKTYPE_IMX:
-      printf("Going to SCPackOldIMX_Read...we do not want to go here\n");
 			errret = SCPackOldIMX_Read(theFile,myBuffer);
 			break;
 		case IM7_PACKTYPE_ZLIB:
-      printf("Going to SCPackZlib_Read...\n");
 			errret = SCPackZlib_Read(theFile,myBuffer);
 			break;
 		case IM7_PACKTYPE_FIXED_12_0:
-      printf("Going to SCPackFixedBits_Read...\n");
 			errret = SCPackFixedBits_Read( theFile, myBuffer, 12 );
 			break;
 		default:
@@ -533,20 +525,17 @@ extern "C" int EXPORT ReadIM7_MEM ( char* mem_address, BufferType* myBuffer, Att
       errret = SCPackZlib_Read_MEM(payload_data, myBuffer);
 			break;
 		case IM7_PACKTYPE_FIXED_12_0:
-      printf("The Memory read also correctly goes through this way as well!\n");
 			errret = SCPackFixedBits_Read_MEM( &payload_data, myBuffer, 12 );
 			break;
 		default:
 			errret = IMREAD_ERR_FORMAT;
 	}
 
-  //printf("Value of read after data mem: %d\n", (*((int *) payload_data));
 
 	if (errret==IMREAD_ERR_NO)
 	{
     int bytes_left = payload_data - mem_address;
     bytes_left = file_size - bytes_left + 1;
-    printf("Bytes left: %d and file_size: %d\n", bytes_left, file_size);
     if (bytes_left < 0)
     {
       fprintf(stderr, "Error: somehow got a negative bytes left...shouldn't be possible!\n");

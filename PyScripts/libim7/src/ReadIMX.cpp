@@ -726,7 +726,6 @@ int ReadImgAttributes( FILE* theFile, AttributeList** myList )
         char* data = NULL;
         if (item.size>0)
 		{
-        printf("Item.size_file: %d\n", item.size);
             data = (char*)malloc(item.size+1);
             data[item.size] = 0; // final 0-byte for strings
             if (!fread(data,1,item.size,theFile))
@@ -788,7 +787,6 @@ int ReadImgAttributes( FILE* theFile, AttributeList** myList )
 		    free(data);
 		}
    }
-   printf("Total bytes left in file: %d\n", total_bytes_left);
    return 0;
 }
 
@@ -798,16 +796,12 @@ int ReadImgAttributes_MEM( char* payload, AttributeList** myList, int bytes_left
 {
     image_extheader item;
     //while (fread((char*)&item,1,sizeof(item),theFile))
-    printf("Bytes left: %d\n", bytes_left);
     while (bytes_left >= 8) //Just trying not to rampage over memory too much.
 	{
         memcpy((char*)&item, payload, sizeof(item));
-    //printf("Ran through the loop once!\n");
-        printf("Item.size_mem: %d\n", item.size);
         bytes_left -= sizeof(item);
         payload += sizeof(item);
         char* data = NULL;
-        //printf("Size of item: %d\tBytes left: %d\n", sizeof(item), bytes_left);
         if (item.size>0)
 		{
             data = (char*)malloc(item.size+1);
@@ -815,7 +809,7 @@ int ReadImgAttributes_MEM( char* payload, AttributeList** myList, int bytes_left
             if(bytes_left < item.size)
             {
               free(data);
-              printf("Extended header: no tag data\n");
+              //printf("Extended header: no tag data\n");
               return -1; // "extended header: no tag data"
             }
             memcpy(data, payload, item.size);
