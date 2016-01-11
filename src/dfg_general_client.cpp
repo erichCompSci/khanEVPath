@@ -114,9 +114,11 @@ void file_receive(simple_rec_ptr event, python_sink_handler_ptr python_info){
   else
     log_info("The data is empty or the file already exists in the shared memory folder.");
 
+  char * data_location = event->file_buf;
+  int file_length = event->file_buf_len;
   char * database_id = event->db_id;
   // Process attribute for python
-  process_python_code(python_info->py_file, python_info->py_method, file_name, database_id);
+  process_python_code(python_info->py_file, python_info->py_method, filepath, data_location, file_length, database_id);
   //unlink(file_name.c_str());
 
 }

@@ -98,7 +98,8 @@ std::string call_pyfunc(std::string func_name, PyObject *pInstance,
   return result;
 }
 
-int process_python_code(std::string py_script, std::string py_function, std::string file_path, char * db_id)
+int process_python_code(std::string py_script, std::string py_function, std::string filename, 
+                                  char * data_location, int file_length, char * db_id)
 {
   log_info("Processing file %s with method %s", py_script.c_str(), py_function.c_str());
 
@@ -111,7 +112,7 @@ int process_python_code(std::string py_script, std::string py_function, std::str
   //Get the database file_id
 
   PyObject *pArgs, *pInstance;
-  pArgs = Py_BuildValue("(s)", file_path.c_str());
+  pArgs = Py_BuildValue("sli", filename.c_str(), data_location, file_length); 
   pInstance = PyObject_CallObject(pClass, pArgs);
   
   std::string res = call_pyfunc(py_function, pInstance, "", "", "");

@@ -8,11 +8,11 @@ import numpy as np
 import mahotas
 
 class Khan:
-  def __init__(self, path):
-    self.path = path.split("/")
-    self.s = path 
-    if path:
-      self.buffer, self.attr = im7.readim7(self.s)
+  def __init__(self, filename, mem_addr, file_size):
+    self.path = filename.split("/")
+    self.s = filename 
+    self.buffer, self.attr = im7.readim7_mem(mem_addr, file_size)
+
 
   def Destroy(self):
     self.path = None
