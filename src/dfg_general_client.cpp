@@ -85,41 +85,14 @@ void file_receive(simple_rec_ptr event, python_sink_handler_ptr python_info){
   //49 is the length of the server name, the path name up to "data"
   //10 is the length of the im7 file name
   std::string dir_name = filepath.substr(49, strlen(event->file_path) - 59);
-  std::string file_name = "/dev/shm/" + filepath.substr(49, strlen(event->file_path) - 49);
 
   log_info("Dir name %s", dir_name.c_str());
-
-  struct stat info;
-  if(stat (("/dev/shm/" + dir_name).c_str(), &info) != 0)
-    _mkdir(("/dev/shm/" + dir_name).c_str());
-  else
-    log_info("Already made directory for %s", ("/dev/shm/" + dir_name).c_str());
-
-
-  struct stat info2;
-  if(event->file_buf != NULL && (stat (file_name.c_str(), &info2) != 0)) {
-
-    FILE* pFile = fopen(file_name.c_str(), "wb");
-
-    if (pFile){
-      size_t w = fwrite(event->file_buf, 1, event->file_buf_len, pFile);
-      log_info("Wrote to file %zu", w );
-      fsync(fileno(pFile));
-      fclose(pFile);
-    }
-    else{
-      log_err("Something wrong writing to file");
-    }
-  }
-  else
-    log_info("The data is empty or the file already exists in the shared memory folder.");
 
   char * data_location = event->file_buf;
   int file_length = event->file_buf_len;
   char * database_id = event->db_id;
   // Process attribute for python
   process_python_code(python_info->py_file, python_info->py_method, filepath, data_location, file_length, database_id);
-  //unlink(file_name.c_str());
 
 }
 
