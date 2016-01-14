@@ -68,6 +68,9 @@ static void _mkdir(const char *dir) {
     }
   mkdir(tmp, S_IRWXU);
 }
+/*The following code will eventually make it's way into a separate file hopefully...*/
+char * call_pyfunc(void **
+
 
 /* Set's up a shared memory location for the python files
    to pull their information from */
@@ -130,6 +133,20 @@ general_handler(CManager cm, void *vevent, void *client_data, attr_list attrs)
 }
 
 
+
+
+char * python_func_call(int x)
+{
+  char * temp = (char *) malloc(sizeof(char) * 2);
+
+  printf("The number recieved is %d\n", x);
+  return itoa(x, temp, 10);
+
+}
+
+
+
+
 int main(int argc, char **argv)
 {
     if (argc != 3)
@@ -137,6 +154,14 @@ int main(int argc, char **argv)
         printf("Usage: dfg_general_client config_file_name node_name\n");
         return 1;
     }
+
+
+    cod_extern_entry externs[] = { 
+      {"python_storage_func", (void *) (long) python_func_call},
+      {NULL, NULL}
+    };
+
+    char extern_string[] = "char * python_func_call(int x);\0\0";
 
     //for_comparison = 0;
     servers.push_back("nothing");
@@ -149,6 +174,7 @@ int main(int argc, char **argv)
     EVclient_sinks sink_capabilities = NULL;
     EVclient_sources source_capabilities = NULL;
     cm = CManager_create();
+    EVadd_standard_routines(cm, extern_string, externs);
     CMlisten(cm);
 
     char master_address[200];

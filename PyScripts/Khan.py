@@ -152,3 +152,14 @@ class Khan:
       print "buffer ", np.sum(np.fromstring(frame, dtype=np.uint8)) 
       print "  mask ", np.sum(np.fromstring(mask, dtype=np.uint8))
       return str(np.mean(binarize_frame))
+
+  def getAggregatedStuff(self, mem_addresses, file_sizes):
+      buffer_list = []
+      attr_list = []
+      for i in range(len(mem_addresses)):
+        tmp_buffer, tmp_attr = im7.readim7_mem(mem_addresses[i], file_sizes[i])
+        buffer_list.append(tmp_buffer)
+        attr_list.append(tmp_attr)
+      
+      return str(1)
+
