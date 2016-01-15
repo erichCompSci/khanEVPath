@@ -1,3 +1,4 @@
+#include "storage_stone.h"
 #include "dfg_functions.h"
 #include "khan_ffs.h"
 
@@ -211,6 +212,15 @@ void dfg_get_master_contact_func(char *retvalue, char* contact_file)
   }
 }
 
+std::string storage_template = "int i;\n\
+        printf(\"Storage stone function called!\\n\");\n\
+        for(i = 0; i < the_size; ++i)\n\
+        {\n\
+          char * temp_ptr = python_func_call(i);\n\
+          printf(\"Received back a %s\\n\", temp_ptr);\n\
+          EVdiscard_and_submit_full(0, 0);\n\
+        }\n\0";
+
 EVdfg_stone create_stone(const stone_struct &stone_info)
 {
     EVdfg_stone the_stone;
@@ -227,6 +237,12 @@ EVdfg_stone create_stone(const stone_struct &stone_info)
         case PYTHON:
             p = strdup(stone_info.src_sink_handler_name.c_str());
             the_stone = EVdfg_create_sink_stone(test_dfg.dfg, p);
+            free(p);
+            p = NULL;
+            break;
+        case BUCKETROLL:
+            p = create_e_rolling_bucket_action_spec(storage_list, stone_info.stone_size, strdup(storage_template.c_str()));
+            the_stone = EVdfg_create_stone(test_dfg.dfg, p);
             free(p);
             p = NULL;
             break;

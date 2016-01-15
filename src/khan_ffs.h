@@ -46,4 +46,6 @@ static FMStructDescRec simple_format_list[] =
   {NULL, NULL}
 };
 
+static FMStructDescList storage_list[] = {simple_format_list, NULL};
+
 #endif

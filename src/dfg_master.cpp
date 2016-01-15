@@ -79,6 +79,12 @@ static int setupBucketStone(const ConfigParser_t & cfg, std::string stone_name, 
       return 0; 
     }
 
+    if(!config_read_stone_size(cfg, stone_name, &(bucket_struct.stone_size)))
+    {
+      log_err("Error reading bucket stone size");
+      return 0;
+    }
+
     return 1;
 
 }
@@ -168,8 +174,22 @@ void JoinHandlerFunc(EVmaster master, char * identifier, void * cur_unused1, voi
                 if((!temp_string1.compare(stone_holder[k].stone_name)) ||
                    (!temp_string2.compare(stone_holder[k].stone_name)))
                 {
+                  if(stone_holder[k].stone_type == SOURCE || stone_holder[k].stone_type == PYTHON)
+                  {
                     EVdfg_link_dest(stones[k], stones[i]);
                     break;
+                  }
+                  else if(stone_holder[k].stone_type == BUCKETROLL)
+                  {
+                    EVdfg_link_port(stones[k], 0, stones[i]);
+                    break;
+                  }
+                  else
+                  {
+                    fprintf(stderr, "The type of the stone is: %d\n", stone_holder[k].stone_type);
+                    fprintf(stderr, "Error: This stone type is not currently supported!\n");
+                    exit(1);
+                  }
                 }
             }
         }
@@ -259,7 +279,6 @@ int main(int argc, char *argv[])
         }
         stone_holder.push_back(new_stone_struct);
         
-        exit(1);
       }
       else
       {

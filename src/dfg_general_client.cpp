@@ -1,4 +1,5 @@
 #include "Python.h"
+#include "cod.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -68,8 +69,6 @@ static void _mkdir(const char *dir) {
     }
   mkdir(tmp, S_IRWXU);
 }
-/*The following code will eventually make it's way into a separate file hopefully...*/
-char * call_pyfunc(void **
 
 
 /* Set's up a shared memory location for the python files
@@ -140,7 +139,8 @@ char * python_func_call(int x)
   char * temp = (char *) malloc(sizeof(char) * 2);
 
   printf("The number recieved is %d\n", x);
-  return itoa(x, temp, 10);
+  snprintf(temp, sizeof(char) * 2, "%d", x);
+  return temp;
 
 }
 
@@ -157,7 +157,7 @@ int main(int argc, char **argv)
 
 
     cod_extern_entry externs[] = { 
-      {"python_storage_func", (void *) (long) python_func_call},
+      {"python_func_call", (void *) (long) python_func_call},
       {NULL, NULL}
     };
 

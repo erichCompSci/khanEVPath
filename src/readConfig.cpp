@@ -99,6 +99,26 @@ int config_read_incoming(const ConfigParser_t & cfg, std::string stone_section, 
   return 1;
 }
 
+int config_read_stone_size(const ConfigParser_t & cfg, std::string stone_section, int * stone_size)
+{
+  std::string temp_str;
+  if(!cfg.getValue(stone_section, "size", &temp_str))
+  {
+    log_err("Failure to return correct size from %s", stone_section.c_str());
+    return 0;
+  }
+
+  if(!sscanf(temp_str.c_str(), "%d", stone_size))
+  {
+    log_err("Failure to convert size string to integer in %s...the string-int is %s", stone_section.c_str(), temp_str.c_str());
+    return 0;
+  }
+
+  return 1;
+}
+
+
+
 
 int config_read_script_name(const ConfigParser_t & cfg, std::string stone_section, std::string & script_name)
 {

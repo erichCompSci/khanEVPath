@@ -13,7 +13,9 @@ SERVER_SRCS  = $(SRCDIR)/khan.cpp \
                $(SRCDIR)/threadpool.c \
 							 $(SRCDIR)/stopwatch.cpp \
 							 $(SRCDIR)/measurements.cpp \
+               $(SRCDIR)/storage_stone.cpp \
 							 $(SRCDIR)/dfg_functions.cpp
+               
 
 DFG_STORE_SRCS = $(SERVER_SRCS) \
                     $(SRCDIR)/dfg_general_client.cpp \

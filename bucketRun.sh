@@ -1,7 +1,7 @@
 #!/bin/bash
 
 SESS_NAME="my_session"
-CONFIG_FILE=src/mytest2.cfg
+CONFIG_FILE=src/bucketTest.cfg
 
 tmux new-session -d -s $SESS_NAME "./bin/dfg_master $CONFIG_FILE"
 
@@ -21,7 +21,9 @@ tmux split-window -t $SESS_NAME:1.0 -h "./bin/dfg_general_client $CONFIG_FILE f"
 tmux split-window -t $SESS_NAME:1.1 -h "./bin/dfg_general_client $CONFIG_FILE g"
 
 tmux neww -d "./bin/dfg_general_client $CONFIG_FILE h"
-tmux split-window -t $SESS_NAME:2.0 -h
+tmux split-window -t $SESS_NAME:2.0 -v "./bin/dfg_general_client $CONFIG_FILE new"
+tmux split-window -t $SESS_NAME:2.0 -h "./bin/dfg_general_client $CONFIG_FILE j"
+tmux split-window -t $SESS_NAME:2.1 -h
 
 tmux attach -t $SESS_NAME
 

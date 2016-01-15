@@ -22,6 +22,7 @@ typedef struct _stone_struct {
     std::string src_sink_handler_name;
     stone_type_t stone_type;
     std::vector<std::string> incoming_stones;
+    int stone_size;
     std::string code1;
     std::string code2;
 
