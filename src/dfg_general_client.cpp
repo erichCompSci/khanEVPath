@@ -27,6 +27,7 @@
 
 chr_time offset2;
 std::string client_node_name;
+FILE * metric_open;
 
 typedef struct _simple_stone_holder
 {
@@ -168,14 +169,25 @@ general_handler(CManager cm, void *vevent, void *client_data, attr_list attrs)
 {
     simple_rec_ptr event = (simple_rec_ptr) vevent;
 #ifdef E_METRIC
-    if(!client_node_name.compare("new"))
+    if(!client_node_name.compare("new") && event->exp_id >= 0)
     {
+        chr_time time_to_complete_raw, time_to_complete;
         chr_get_time(&(event->end));
+        chr_timer_diff(&time_to_complete_raw, &(event->end), &(event->start));
+        chr_timer_diff(&time_to_complete, &time_to_complete_raw, &offset2);
+
+        double time_nano;
+        time_nano = chr_time_to_nanosecs(&(time_to_complete));
+        double time_nano_raw = chr_time_to_nanosecs(&time_to_complete_raw);
+        fprintf(metric_open, "Time to complete raw for db_id %s is: %f\n", event->db_id, time_nano_raw);
+        fprintf(metric_open, "Time to complete for db_id %s is: %f\n", event->db_id, time_nano);
+
     }
 #endif
-    printf("Received an event with exp_id: %d\n", event->exp_id);
+    /*printf("Received an event with exp_id: %d\n", event->exp_id);
     printf("The current db_id: %s\n", event->db_id);
     printf("The current filepath: %s\n", event->file_path);
+    */
     if(event->exp_id < 0)
     {
       printf("The file_buf_len is: %d\n", event->file_buf_len);
@@ -185,6 +197,7 @@ general_handler(CManager cm, void *vevent, void *client_data, attr_list attrs)
         if(i % 40 == 0 && i != 0)
           printf("\n");
       }
+      fflush(metric_open);
     }
     return 1;
 }
@@ -369,6 +382,8 @@ int main(int argc, char **argv)
 
       sink_capabilities = EVclient_register_sink_handler(cm, "sync_handler2", ping_pong_format_list,
           (EVSimpleHandlerFunc) sync_handler, NULL);
+
+      metric_open = fopen("outputs/metrics.txt", "w");
     }
 
 #endif
