@@ -213,13 +213,49 @@ void dfg_get_master_contact_func(char *retvalue, char* contact_file)
 }
 
 std::string storage_template = "int i;\n\
-        printf(\"Storage stone function called!\\n\");\n\
+        static int count = 0;\n\
+        char ** data_ptr = (char *) malloc(sizeof(char*) * (the_size + 1));\n\
+        long * file_sizes = (long *) malloc(sizeof(long) * the_size);\n\
+        int first_exp_id;\n\
+        simple * tmp_ptr;\n\
+        tmp_ptr = (simple *) EVdata_simple(0);\n\
+        first_exp_id = count;\n\
+        simple new_data;\n\
         for(i = 0; i < the_size; ++i)\n\
         {\n\
+          simple * tmp_ptr;\n\
+          tmp_ptr = (simple *) EVdata_simple(i);\n\
+          file_sizes[i] = tmp_ptr->file_buf_len;\n\
+          data_ptr[i] = &(tmp_ptr->file_buf[0]);\n\
+        }\n\
+        data_ptr[the_size] = NULL;\n\
+        char * res_data;\n\
+        res_data = process_py_store(\"getAggregatedStuff\", data_ptr, file_sizes, first_exp_id, the_size, &(new_data.db_id));\n\
+        int data_size = get_data_length();\n\
+        new_data.file_path = \"null\";\n\
+        new_data.file_buf_len = data_size;\n\
+        for(i = 0; i < data_size; ++i)\n\
+        {\n\
+          new_data.file_buf[i] = res_data[i];\n\
+        }\n\
+        new_data.exp_id = -1;\n\
+        EVsubmit(0, new_data);\n\
+        for(i = 0; i < the_size; ++i)\n\
+        {\n\
+          EVsubmit_simple(0, i);\n\
+        }\n\0";
+
+ /* 
+        }\n\
+        
+        
+        res_data[0] = \'n\';\n\
+
+
           char * temp_ptr = python_func_call(i);\n\
           printf(\"Received back a %s\\n\", temp_ptr);\n\
-          EVdiscard_and_submit_full(0, 0);\n\
-        }\n\0";
+          EVdiscard_and_submit_full(0, 0);"
+*/
 
 EVdfg_stone create_stone(const stone_struct &stone_info)
 {
@@ -241,8 +277,9 @@ EVdfg_stone create_stone(const stone_struct &stone_info)
             p = NULL;
             break;
         case BUCKETROLL:
-            p = create_e_rolling_bucket_action_spec(storage_list, stone_info.stone_size, strdup(storage_template.c_str()));
+            p = create_e_rolling_bucket_action_spec(storage_list, strdup(storage_template.c_str()));
             the_stone = EVdfg_create_stone(test_dfg.dfg, p);
+            init_stone_size(the_stone, NULL, stone_info.stone_size);
             free(p);
             p = NULL;
             break;

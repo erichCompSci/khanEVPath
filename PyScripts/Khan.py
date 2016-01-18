@@ -11,14 +11,22 @@ class Khan:
   def __init__(self, filename, mem_addr, file_size):
     self.path = filename.split("/")
     self.s = filename 
-    self.buffer, self.attr = im7.readim7_mem(mem_addr, file_size)
+    if file_size > 0:
+      print "Initializing Buffer!"
+      self.buffer, self.attr = im7.readim7_mem(mem_addr, file_size)
 
 
   def Destroy(self):
     self.path = None
     self.s = None
-    self.buffer.delete()
-    self.attr.delete()
+    try:
+      self.buffer.delete()
+    except AttributeError:
+      pass
+    try:
+      self.attr.delete()
+    except AttributeError:
+      pass
     return ""
 
   def S(self):
@@ -161,5 +169,5 @@ class Khan:
         buffer_list.append(tmp_buffer)
         attr_list.append(tmp_attr)
       
-      return str(1)
+      return np.array_str(buffer_list[0].get_frame(0))
 

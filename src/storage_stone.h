@@ -80,9 +80,29 @@ static FMStructDescRec message_format_list[] =
 	{NULL, NULL}
 };
 
+/* This is going to be used to change the stone attr until I can find a better way */
+typedef struct _size_message {
+  int size;
+} size_message, * size_message_ptr;
+
+static FMField size_message_field_list[] =
+{
+  {"size", "integer", sizeof(int), FMOffset(message_sa_ptr, size)},
+  {NULL, NULL, 0, 0}
+};
+
+static FMStructDescRec size_message_format_list[] =
+{
+  {"size_message", size_message_field_list, sizeof(size_message), NULL},
+  {NULL, NULL}
+};
+
+
 // Data structures that are used by the storage and transaction stone for communication
 static const FMStructDescList init_storage_queue_list[] = {relay_format_list, heads_up_mesg_format_list, message_format_list, NULL};
 
+//Data structure used for realtime changes to the windows
+static const FMStructDescList init_window_queue_list[] = {size_message_format_list, NULL};
 /* Creates a storage action spec.  I want to make this a real function in EV_dfg so that I can set 
  * the size here.  If I do that, then I don't have to worry about extra source stones */
 extern char * create_e_storage_action_spec(FMStructDescList * list, char * storage_func_src);
@@ -92,7 +112,10 @@ extern char * create_e_storage_action_spec(FMStructDescList * list, char * stora
  * now. */
 extern char * create_e_transaction_action_spec(FMStructDescList * list, int size);
 
-extern char * create_e_rolling_bucket_action_spec(FMStructDescList * list, int size, char* bucket_func_src);
+extern char * create_e_rolling_bucket_action_spec(FMStructDescList * list, char* bucket_func_src);
+
+/*Need to do this after we create the action specs as we have to create the stone first*/
+extern int init_stone_size(EVdfg_stone storage_stone, attr_list attrs, int size);
 
 
 #ifdef __cplusplus

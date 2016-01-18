@@ -173,63 +173,125 @@ char * create_e_transaction_action_spec(FMStructDescList * list, int size)
 
 }
 
-/*DANGER!!! EVcount_simple assumes the data type will be called simple...I will 
-  fix that by moving everything to EVPath after this paper*/
 static char * bucket_top_src = "{\n\
-    static int the_size = 0;\n\
-    if(the_size == 0)\n\
+    if(EVcount_size_message() == 1)\n\
     {\n\
-        the_size = %d;\n\
+      size_message * sizem = EVdata_size_message(0);\n\
+      set_int_attr(stone_attrs, \"stone_size\", sizem->size);\n\
+      printf(\"Just set the size to: %d\\n\", sizem->size);\n\
+      EVdiscard_size_message(0);\n\
     }\n\
-    if(EVcount_simple() == the_size)\n\
-    {\n\0";
+    int the_size = 0;\n\
+    if (!attr_set(stone_attrs, \"stone_size\"))\n\
+    {\n\
+      printf(\"Error: stone size is not set!\\n\");\n\
+    }\n\
+    else\n\
+    {\n\
+      the_size = attr_ivalue(stone_attrs, \"stone_size\");\n\
+      int num_of_windows = EVcount_full() / the_size;\n\
+      int current_num_event = EVcount_full();\n\
+      int j;\n\
+      for(j = 0; j < num_of_windows; j++)\n\
+      {\n\0";
 
-static char * bucket_roll_bottom = "for(i = 0; i < EVcount_simple(); ++i)\n\
-        {\n\
-            EVdiscard_simple(0);\n\
-        }\n\
-    }}\0\0";
+static char * bucket_roll_bottom = "if(EVcount_full() <= current_num_event)\n\
+    {\n\
+      int z;\n\
+      int need_to_remove = EVcount_full() - current_num_event + the_size;\n\
+      for(z = 0; z < need_to_remove; ++z)\n\
+      {\n\
+        EVdiscard_full(0);\n\
+      }\n\
+    }\n\
+    }}}\0\0";
 
 
-char * create_e_rolling_bucket_action_spec(FMStructDescList * list, int size, char * bucket_func_src)
+char * create_e_rolling_bucket_action_spec(FMStructDescList * list, char * bucket_func_src)
 {
-    if(size <= 0)
-        return NULL;
-
-    /* I do a quick algorithm to determine how many extra characters I will need 
-     * when I replace the size in the string.  It's fairly easy to understand, and 
-     * it seems to work for all my current cases, so I'll leave it at that... */
-    int length_of_add = 0;
-    int temp_size = size;
-    while(temp_size != 0)
-    {
-        temp_size = temp_size / 10;
-        if(temp_size != 0)
-            ++length_of_add;
-    }
-
-    char * action_spec;
-    char * bucket_top_final = (char *) malloc((strlen(bucket_top_src) + length_of_add) * sizeof(char));
-    sprintf(bucket_top_final, bucket_top_src, size);
-
-    //Done it to here
-    size_t string_size = strlen(bucket_top_final) + strlen(bucket_func_src) + strlen(bucket_roll_bottom);
-    char * complete_bucket_func = (char *)malloc((string_size + 2) * sizeof(char));
-
-    strcpy(complete_bucket_func, bucket_top_final);
-    strcat(complete_bucket_func, bucket_func_src);
-    strcat(complete_bucket_func, bucket_roll_bottom);
-
-    if((strlen(complete_bucket_func)) != string_size)
-    {
-        fprintf(stderr, "Error: the strlength is not as expected (should be equal)\nString length is: %d\t\tString size is: %d\n", strlen(complete_bucket_func), string_size);
-        exit(1);
-    }
-    complete_bucket_func[strlen(complete_bucket_func) + 1] = '\0';
     
-    printf("%s", complete_bucket_func);
 
-	  action_spec = create_multityped_action_spec(list, complete_bucket_func);	
+  /* I do a quick algorithm to determine how many extra characters I will need 
+   * when I replace the size in the string.  It's fairly easy to understand, and 
+   * it seems to work for all my current cases, so I'll leave it at that... */
 
-    return action_spec;
+	int new_size;
+	int old_size;
+  char * action_spec;
+
+  //Done it to here
+  size_t string_size = strlen(bucket_top_src) + strlen(bucket_func_src) + strlen(bucket_roll_bottom);
+  char * complete_bucket_func = (char *)malloc((string_size + 2) * sizeof(char));
+
+  strcpy(complete_bucket_func, bucket_top_src);
+  strcat(complete_bucket_func, bucket_func_src);
+  strcat(complete_bucket_func, bucket_roll_bottom);
+
+  if((strlen(complete_bucket_func)) != string_size)
+  {
+      fprintf(stderr, "Error: the strlength is not as expected (should be equal)\nString length is: %d\t\tString size is: %d\n", strlen(complete_bucket_func), string_size);
+      exit(1);
+  }
+  complete_bucket_func[strlen(complete_bucket_func) + 1] = '\0';
+  
+  printf("%s", complete_bucket_func);
+
+	if(!list[0])
+	{
+		fprintf(stderr, "FMStructDescList passed to storage action spec has size of 0\n");
+		return NULL;
+	}
+
+
+	// Use old_size to count the elements in the incoming list
+	for (old_size = 0; list[old_size]; ++old_size);
+	new_size = old_size + 1;
+	FMStructDescList * new_list = (FMStructDescList *)malloc(new_size * sizeof(FMStructDescList));
+
+
+	for (int i = 0; i < new_size; ++i)
+	{
+		if (i < (new_size - 1))
+		{
+			new_list[i] = list[i];
+		}
+		else
+		{
+			new_list[i] = init_window_queue_list[(i - old_size)];
+		}
+	}
+  
+  new_list[new_size] = NULL;
+
+
+	action_spec = create_multityped_action_spec(new_list, complete_bucket_func);	
+
+  return action_spec;
+}
+
+
+int init_stone_size(EVdfg_stone storage_stone, attr_list attrs, int size)
+{
+
+    attr_list true_attrs;
+    if(!attrs)
+      true_attrs = create_attr_list();
+    else
+      true_attrs = attrs;
+
+    if(!true_attrs)
+    {
+      fprintf(stderr, "Error: storage stone attr list could not be created\n");
+      return 0;
+    }
+
+    atom_t STONE_SIZE;
+    STONE_SIZE = attr_atom_from_string("stone_size");
+
+    add_int_attr(true_attrs, STONE_SIZE, size);
+
+    EVdfg_set_attr_list(storage_stone, true_attrs);
+
+    return 1;
+
 }

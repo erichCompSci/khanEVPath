@@ -3,6 +3,7 @@
 #include <string>
 #include <string.h>
 #include <fstream>
+#include <sstream>
 #include <map>
 #include <queue>
 #include <utility>
@@ -62,6 +63,62 @@ void cleanup_python(){
   Py_DECREF(pClass);
 }
 
+char * call_pystore_func(char * method_name, PyObject *pInstance, char** data, long * file_sizes)
+{
+
+  PyObject *pValue;
+  PyObject *pyMethodName;
+  PyObject *dataTuple;
+  PyObject *sizesTuple;
+  std::string result;
+
+  if(!method_name)
+  {
+    log_err("Method name is null in call_pystore_func");
+    return "";
+  }
+  pyMethodName = PyString_FromString(method_name);
+
+  int i = 0;
+  while(data[i]) i++;
+  printf("SANITY CHECK...SIZE OF STORAGE STONE IS: %d\n", i);
+
+  /* Hacky as hell, but I'm not sure there is another way without
+     changing the underlying im7 library to specifically handle 
+     Python Capsule objects */
+  dataTuple = PyTuple_New(i);
+  for(int j = 0; j < i; ++j)
+    PyTuple_SetItem(dataTuple, j, PyLong_FromLong((long) data[j]));
+
+  sizesTuple = PyTuple_New(i);
+  for(int j = 0; j < i; ++j)
+    PyTuple_SetItem(sizesTuple, j, PyLong_FromLong(file_sizes[j]));
+  
+  pValue = PyObject_CallMethodObjArgs(pInstance, pyMethodName, dataTuple, sizesTuple, NULL);
+  
+  if(!pValue)
+  {
+    if(PyErr_Occurred())
+      PyErr_Print();
+    return NULL;
+  }
+  else
+  {
+    result = PyString_AsString(pValue);
+    Py_DECREF(pValue);
+  }
+
+  char * tmp_ptr = strdup(result.c_str());
+  if(strlen(tmp_ptr) != result.length())
+  {
+    fprintf(stderr, "Error: Conversion to c string changes length of string.  strlen is: %d and result.length is :%d\n",
+                                    strlen(tmp_ptr), result.length());
+    return NULL;
+  }
+
+  return tmp_ptr;
+}
+
 std::string call_pyfunc(std::string func_name, PyObject *pInstance,
                         std::string format_str, std::string arg1, 
                         std::string arg2){
@@ -97,6 +154,69 @@ std::string call_pyfunc(std::string func_name, PyObject *pInstance,
 
   return result;
 }
+
+int size_of_py_result;
+
+char * process_py_store(char * method_name, char** data, long * data_size, int first_index, int size, char ** db_id)
+{
+  log_info("Processing storage stone data with method: %s", method_name);
+
+  char * fake_file = "/dev/null";
+  //Get the database file_id
+
+  PyObject *pArgs, *pInstance;
+  int tmp_int = -1;
+  char * tmp_data = data[0];
+  pArgs = Py_BuildValue("sli", fake_file, tmp_data, tmp_int); 
+  pInstance = PyObject_CallObject(pClass, pArgs);
+  
+  char * res = call_pystore_func(method_name, pInstance, data, data_size);
+  
+  if(!res)
+  {
+    fprintf(stderr, "Error: calling pystore func returned null value!\n");
+    exit(1);
+  }
+  size_of_py_result = strlen(res);
+  printf("Size of py_result is: %d\n", size_of_py_result);
+
+
+/* This stuff will go into the database eventually */
+  int final_index = first_index + size;
+
+  std::stringstream convert_db;
+  convert_db << first_index;
+  convert_db << "_";
+  convert_db << final_index;
+  
+  *db_id = strdup(convert_db.str().c_str());
+  /*
+  std::string result;
+  result = database_setval(db_id, method_name, res);
+  if(!result.compare("fail"))
+  {
+      log_err("Failed to insert into database value");
+      return 0;
+  }
+  */
+  std::string destroy = "Destroy";
+  call_pyfunc(destroy.c_str(), pInstance, "", "", "");
+  log_info("Delete called");
+  Py_DECREF(pArgs);
+  Py_DECREF(pInstance);
+  return res;
+}
+
+int get_data_length() 
+{ 
+  if(!size_of_py_result)
+  {
+    log_err("Size of py result not set!");
+    return -1;
+  }
+  return size_of_py_result;
+}
+
 
 int process_python_code(std::string py_script, std::string py_function, std::string filename, 
                                   char * data_location, int file_length, char * db_id)
