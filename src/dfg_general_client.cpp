@@ -13,6 +13,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
+#include "synchron.h"
 #include "evpath.h"
 #include "ev_dfg.h"
 #include "dfg_functions.h"
@@ -22,6 +23,10 @@
 #include "fileprocessor.h"
 
 #define MAX_SOURCES 20
+#define E_METRIC
+
+chr_time offset2;
+std::string client_node_name;
 
 typedef struct _simple_stone_holder
 {
@@ -49,9 +54,40 @@ std::vector < std::string > servers;
 std::vector < std::string > server_ids;
 std::vector<std::pair<std::string, std::string> > python_master_list;
 
-int for_comparison;
-int old_comparison;
-int current_value;
+
+#ifdef E_METRIC
+EVsource sync_src_handle;
+
+static int
+sync_handler(CManager cm, void *vevent, void *client_data, attr_list attrs)
+{
+
+  ping_pong_ptr event = (ping_pong_ptr) vevent;
+  chr_get_time(&(event->t1_p));
+
+  chr_get_time(&(event->t2));
+  
+  EVsubmit(sync_src_handle, event, NULL);
+
+  offset2 = event->offset2;
+
+  double time;
+  time = chr_time_to_nanosecs(&offset2);
+  time = time / 2.0;
+  printf("The time difference in nanoseconds is: %f\n", time);
+
+  time = chr_time_to_microsecs(&offset2);
+  time = time / 2.0;
+  printf("The time difference in microseconds is: %f\n", time);
+
+  time = chr_time_to_millisecs(&offset2);
+  time = time / 2.0;
+  printf("The time difference in milleseconds is: %f\n", time);
+
+  return 1;
+}
+
+#endif
 
 
 /* Used for creating the recursive subdirectories */ 
@@ -131,7 +167,15 @@ static int
 general_handler(CManager cm, void *vevent, void *client_data, attr_list attrs)
 {
     simple_rec_ptr event = (simple_rec_ptr) vevent;
+#ifdef E_METRIC
+    if(!client_node_name.compare("new"))
+    {
+        chr_get_time(&(event->end));
+    }
+#endif
     printf("Received an event with exp_id: %d\n", event->exp_id);
+    printf("The current db_id: %s\n", event->db_id);
+    printf("The current filepath: %s\n", event->file_path);
     if(event->exp_id < 0)
     {
       printf("The file_buf_len is: %d\n", event->file_buf_len);
@@ -182,7 +226,7 @@ int main(int argc, char **argv)
       {NULL, NULL}
     };
 
-    char extern_string[] = "char * process_py_store(char * method_name, char** data, long * data_size, int first_index, int size, char ** db_id); \n\
+    char extern_string[] = "char * process_py_store(char * method_name, char** data, long * data_size, char * first_id, int size, char ** db_id); \n\
     int get_data_length();\0";
 
     //for_comparison = 0;
@@ -190,7 +234,7 @@ int main(int argc, char **argv)
     server_ids.push_back("nothing");
 
     std::string config_file_name = argv[1];
-    std::string client_node_name = argv[2];
+    client_node_name = argv[2];
 
     CManager cm;
     EVclient_sinks sink_capabilities = NULL;
@@ -317,7 +361,17 @@ int main(int argc, char **argv)
           }
 
     }
+#ifdef E_METRIC
+    if(!client_node_name.compare("new"))
+    {
+      sync_src_handle = EVcreate_submit_handle(cm, -1, ping_pong_format_list);
+      source_capabilities = EVclient_register_source("sync source2", sync_src_handle);
 
+      sink_capabilities = EVclient_register_sink_handler(cm, "sync_handler2", ping_pong_format_list,
+          (EVSimpleHandlerFunc) sync_handler, NULL);
+    }
+
+#endif
             
     /*  Associate the client */
     char * temp_ptr = strdup(client_node_name.c_str());

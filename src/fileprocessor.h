@@ -12,7 +12,7 @@ int process_python_code(std::string py_script, std::string py_function, std::str
                         char * data_location, int file_length, char * db_id);
 
 
-char * process_py_store(char * method_name, char** data, long * data_size, int first_index, 
+char * process_py_store(char * method_name, char** data, long * data_size, char * first_id, 
                               int size, char ** db_id);
 
 int get_data_length();

@@ -7,6 +7,7 @@
 #include <unistd.h>
 
 #include "dfg_functions.h"
+#include "synchron.h"
 #include "fileprocessor.h"
 #include "cfgparser.h"
 #include "log.h"
@@ -15,6 +16,8 @@
 #include "measurements.h"
 #include "database.h"
 #include "readConfig.h"
+
+#define E_METRIC
 
 extern struct dfg_unit test_dfg;
 
@@ -25,6 +28,8 @@ std::vector < std::string > server_ids;
 
 std::string this_server;
 std::string this_server_id;
+
+EVsource sync_source;
 
 /* Init the database values.  Return 0 on failure, 1 on success */
 int init_database_values(simple_rec & data)
@@ -62,22 +67,84 @@ int init_database_values(simple_rec & data)
     return 1;
 }
 
+int not_synced;
+
+#ifdef E_METRIC
+static int
+synchro_handler(CManager cm, void * vevent, void * client_data, attr_list attrs)
+{
+  static chr_time offset_received;
+  static chr_time empty;
+
+  ping_pong_ptr event = (ping_pong_ptr) vevent;
+  chr_get_time(&(event->t2_p));
+
+  if(!memcmp(&offset_received, &empty, sizeof(chr_time)))
+    chr_get_time(&offset_received);
+  
+  if(!memcmp(&(event->offset2), &(offset_received), sizeof(chr_time)))
+  {
+    not_synced = 0;
+    return 1;
+  }
+  
+  chr_time diff_time1, diff_time2;
+  chr_timer_diff(&diff_time1, &(event->t1_p), &(event->t1));
+  chr_timer_diff(&diff_time2, &diff_time1, &(event->t2_p));
+  chr_timer_sum(&(event->offset2), &diff_time2, &(event->t2));
+
+
+  double time;
+  time = chr_time_to_nanosecs(&(event->offset2));
+  time = time / 2.0;
+  printf("The time difference in nanoseconds is: %f\n", time);
+
+  time = chr_time_to_microsecs(&(event->offset2));
+  time = time / 2.0;
+  printf("The time difference in microseconds is: %f\n", time);
+
+  time = chr_time_to_millisecs(&(event->offset2));
+  time = time / 2.0;
+  printf("The time difference in milleseconds is: %f\n", time);
+
+  offset_received = event->offset2;
+  //memcpy(&offset_received, &(event->offset2), sizeof(chr_time));
+
+  EVsubmit(sync_source, event, NULL);
+
+
+
+  return 1;
+}
+
+#endif
+
 void usage()
 {
   printf("Usage:\n ./dfg_master configfile \n");
 }
 
 
-static int setupBucketStone(const ConfigParser_t & cfg, std::string stone_name, stone_struct & bucket_struct, stone_type_t which_bucket)
+static int setupBucketStone(const ConfigParser_t & cfg, std::string stone_name, stone_struct & bucket_struct, 
+                                stone_struct & size_stone_struct, stone_type_t which_bucket)
 {
+
+
     bucket_struct.stone_name = stone_name;
     bucket_struct.stone_type = which_bucket;
+    std::string size_incoming = stone_name + "_size";
+
+    size_stone_struct.node_name = "master_node";
+    size_stone_struct.stone_name = size_incoming;
+    size_stone_struct.src_sink_handler_name = size_stone_struct.stone_name + "_" + size_stone_struct.node_name;
+    size_stone_struct.stone_type = SOURCE;
 
     if(!config_read_incoming(cfg, stone_name, bucket_struct.incoming_stones))
     {
       log_err("Error reading incoming stones");
       return 0; 
     }
+    bucket_struct.incoming_stones.push_back(size_incoming);
 
     if(!config_read_stone_size(cfg, stone_name, &(bucket_struct.stone_size)))
     {
@@ -86,7 +153,6 @@ static int setupBucketStone(const ConfigParser_t & cfg, std::string stone_name, 
     }
 
     return 1;
-
 }
 
 
@@ -194,6 +260,28 @@ void JoinHandlerFunc(EVmaster master, char * identifier, void * cur_unused1, voi
             }
         }
     }
+    /* Clock Synchronization stuff */
+
+#ifdef E_METRIC
+
+    EVdfg_stone sync_src, sync_sink, sync_src2, sync_sink2;
+
+    sync_src = EVdfg_create_source_stone(test_dfg.dfg, "sync source");
+    EVdfg_assign_node(sync_src, "master_node");
+
+    sync_sink = EVdfg_create_sink_stone(test_dfg.dfg, "sync_handler2");
+    EVdfg_assign_node(sync_sink, "new");
+
+    sync_src2 = EVdfg_create_source_stone(test_dfg.dfg, "sync source2");
+    EVdfg_assign_node(sync_src2, "new");
+
+    sync_sink2 = EVdfg_create_sink_stone(test_dfg.dfg, "sync_handler");
+    EVdfg_assign_node(sync_sink2, "master_node");
+
+    EVdfg_link_dest(sync_src, sync_sink);
+    EVdfg_link_dest(sync_src2, sync_sink2);
+
+#endif
         
     // Realize the dfg hopefully
     EVdfg_realize(test_dfg.dfg);
@@ -209,8 +297,12 @@ int main(int argc, char *argv[])
     usage();
   else
   {
+    not_synced = 1;
     std::vector<std::string> type_names;
     std::string config_file_name = argv[1]; 
+    /*Need this for some hacky bookkeeping of storage stone size stuff */
+    int does_bucket_exist = 0;
+    std::string stor_handler_name;
 
     ConfigParser_t cfg;
     if(cfg.readFile(config_file_name))
@@ -272,12 +364,16 @@ int main(int argc, char *argv[])
       else if(new_stone_struct.stone_type == BUCKETROLL)
       {
         
-        if(!setupBucketStone(cfg, *I, new_stone_struct, BUCKETROLL))
+        stone_struct size_stone_struct;
+        if(!setupBucketStone(cfg, *I, new_stone_struct, size_stone_struct, BUCKETROLL))
         {
             log_err("Error: failed to setup bucket stone");
             exit(1);
         }
+        stor_handler_name = size_stone_struct.src_sink_handler_name;
         stone_holder.push_back(new_stone_struct);
+        stone_holder.push_back(size_stone_struct);
+        does_bucket_exist = 1;
         
       }
       else
@@ -369,9 +465,24 @@ int main(int argc, char *argv[])
     */
     
     EVclient_sources source_capabilities;
-    EVsource source_handle;
+    EVclient_sinks sink_capabilities = NULL;
+    EVsource source_handle, bucket_size_handle;
     EVclient master_client;
 
+#ifdef E_METRIC
+    sync_source = EVcreate_submit_handle(test_dfg.cm, -1, ping_pong_format_list);
+    source_capabilities = EVclient_register_source("sync source", sync_source);
+
+	  sink_capabilities = EVclient_register_sink_handler(test_dfg.cm, "sync_handler", 
+                        ping_pong_format_list, (EVSimpleHandlerFunc) synchro_handler, NULL);
+#endif
+
+    if(does_bucket_exist)
+    {
+      /*Don't try to memclean this, it won't go well for you */
+      bucket_size_handle = EVcreate_submit_handle(test_dfg.cm, -1, size_message_format_list);
+      source_capabilities = EVclient_register_source(strdup(stor_handler_name.c_str()), bucket_size_handle);
+    }
 
 
     source_handle = EVcreate_submit_handle(test_dfg.cm, -1, simple_format_list);
@@ -379,13 +490,28 @@ int main(int argc, char *argv[])
     source_capabilities = EVclient_register_source(temp_char_ptr, source_handle);
     temp_char_ptr = NULL;
 
-    master_client = EVclient_assoc_local(test_dfg.cm, "master_node", test_dfg.dfg_master, source_capabilities, NULL);
+    master_client = EVclient_assoc_local(test_dfg.cm, "master_node", test_dfg.dfg_master, source_capabilities, sink_capabilities);
 
     if (EVclient_ready_wait(master_client) != 1) {
       /* initialization failed! */
       log_err("EVclient_ready_wait: FAILED!");
       exit(1);
     }
+
+#ifdef E_METRIC
+
+    ping_pong_ptr new_ping = (ping_pong_ptr) calloc(1, sizeof(ping_pong));
+
+    chr_get_time(&(new_ping->t1));
+    EVsubmit(sync_source, new_ping, NULL);
+
+    while(not_synced)
+    {
+      CMpoll_network(test_dfg.cm);
+    }
+
+#endif
+
     /*
     python_list test_py_list;
     test_py_list.dynamic_size = 4;
@@ -454,9 +580,11 @@ int main(int argc, char *argv[])
     type_names.push_back("im7");
     initialize_attrs_for_data_types(type_names);
     
-
+    /* In my experience non-initalized data can give EVPath and CoD issues
+    *  sometimes, so I don't risk it anymore. */
+    static simple_rec empty_data;
     /* Here's where we set up and send the data */
-    simple_rec data;
+    simple_rec data = empty_data;
 
     std::string pattern = servers[0] + "/*";
     glob_t files;
@@ -464,14 +592,21 @@ int main(int argc, char *argv[])
     int fdin;
     struct stat statbuf;
     std::set<std::string> experiments;
+    int change_size = 2;
 
     for(int count = 18; count > 0; count--) {
 
       glob((pattern +".im7").c_str(), 0, NULL, &files);        
 
       log_info("Globbing with pattern: %s.im7", pattern.c_str());
-
       for(unsigned j=0; j<files.gl_pathc; j++) {
+        if(does_bucket_exist && (j % 2) == 0 && j != 0)
+        {
+          size_message msg;
+          msg.size = change_size++;
+          EVsubmit(bucket_size_handle, &msg, NULL);
+        }
+
         std::string filepath = files.gl_pathv[j];
         log_info("File Path: %s", filepath.c_str());
 
@@ -504,6 +639,10 @@ int main(int argc, char *argv[])
             log_err("Error in initializing database values for %s", data.file_path);
             exit(1);
         }
+#ifdef E_METRIC
+        chr_get_time(&(data.start));
+#endif
+
 
         EVsubmit(source_handle, &data, NULL);
 

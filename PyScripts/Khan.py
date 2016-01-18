@@ -161,7 +161,7 @@ class Khan:
       print "  mask ", np.sum(np.fromstring(mask, dtype=np.uint8))
       return str(np.mean(binarize_frame))
 
-  def getAggregatedStuff(self, mem_addresses, file_sizes):
+  def heatDensityMap(self, mem_addresses, file_sizes):
       buffer_list = []
       attr_list = []
       for i in range(len(mem_addresses)):
@@ -169,5 +169,12 @@ class Khan:
         buffer_list.append(tmp_buffer)
         attr_list.append(tmp_attr)
       
-      return np.array_str(buffer_list[0].get_frame(0))
+      start = np.add(buffer_list[0].get_frame(0), buffer_list[1].get_frame(0))
+      frame_total = start
+      for i in range(2, len(buffer_list)):
+        frame_total = np.add(buffer_list[i].get_frame(0), frame_total)
+
+      frame_total = frame_total * (1.0 / len(buffer_list))
+
+      return np.array_str(frame_total)
 

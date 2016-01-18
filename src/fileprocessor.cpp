@@ -157,7 +157,7 @@ std::string call_pyfunc(std::string func_name, PyObject *pInstance,
 
 int size_of_py_result;
 
-char * process_py_store(char * method_name, char** data, long * data_size, int first_index, int size, char ** db_id)
+char * process_py_store(char * method_name, char** data, long * data_size, char * first_id, int size, char ** db_id)
 {
   log_info("Processing storage stone data with method: %s", method_name);
 
@@ -175,14 +175,15 @@ char * process_py_store(char * method_name, char** data, long * data_size, int f
   if(!res)
   {
     fprintf(stderr, "Error: calling pystore func returned null value!\n");
-    exit(1);
+    *res = 3;
   }
   size_of_py_result = strlen(res);
   printf("Size of py_result is: %d\n", size_of_py_result);
 
 
 /* This stuff will go into the database eventually */
-  int final_index = first_index + size;
+  int first_index = atoi(first_id);
+  int final_index = first_index + size - 1;
 
   std::stringstream convert_db;
   convert_db << first_index;

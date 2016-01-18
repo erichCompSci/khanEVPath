@@ -1,6 +1,8 @@
 #ifndef KHAN_FFS
 #define KHAN_FFS
 
+#include "synchron.h"
+
 /*
 typedef struct _python_list {
     int dynamic_size;
@@ -14,6 +16,9 @@ typedef struct _simple_rec {
   char* db_id;
   long file_buf_len;
   char* file_buf;
+  chr_time start;
+  chr_time end;
+
 } simple_rec, *simple_rec_ptr;
 
 static FMField simple_field_list[] =
@@ -23,6 +28,8 @@ static FMField simple_field_list[] =
   {"db_id", "string", sizeof(char*), FMOffset(simple_rec_ptr, db_id)},
   {"file_buf_len", "integer", sizeof(long), FMOffset(simple_rec_ptr, file_buf_len)},
   {"file_buf", "char[file_buf_len]", sizeof(char), FMOffset(simple_rec_ptr, file_buf)},
+  {"start", "chr_time", sizeof(chr_time), FMOffset(simple_rec_ptr, start)},
+  {"end", "chr_time", sizeof(chr_time), FMOffset(simple_rec_ptr, end)},
   {NULL, NULL, 0, 0}
 };
 
@@ -43,6 +50,7 @@ static FMStructDescRec python_format_list[] =
 static FMStructDescRec simple_format_list[] =
 {
   {"simple", simple_field_list, sizeof(simple_rec), NULL},
+  {"chr_time", chr_time_field_list, sizeof(chr_time), NULL},
   {NULL, NULL}
 };
 

@@ -9,6 +9,7 @@
 #include <sys/time.h>
 #include <vector>
 
+#include "storage_stone.h"
 #include "evpath.h"
 #include "ev_dfg.h"
 

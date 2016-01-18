@@ -1,4 +1,3 @@
-#include "storage_stone.h"
 #include "dfg_functions.h"
 #include "khan_ffs.h"
 
@@ -213,13 +212,12 @@ void dfg_get_master_contact_func(char *retvalue, char* contact_file)
 }
 
 std::string storage_template = "int i;\n\
-        static int count = 0;\n\
         char ** data_ptr = (char *) malloc(sizeof(char*) * (the_size + 1));\n\
         long * file_sizes = (long *) malloc(sizeof(long) * the_size);\n\
-        int first_exp_id;\n\
+        char * first_db_id;\n\
         simple * tmp_ptr;\n\
         tmp_ptr = (simple *) EVdata_simple(0);\n\
-        first_exp_id = count;\n\
+        first_db_id = tmp_ptr->db_id;\n\
         simple new_data;\n\
         for(i = 0; i < the_size; ++i)\n\
         {\n\
@@ -230,7 +228,7 @@ std::string storage_template = "int i;\n\
         }\n\
         data_ptr[the_size] = NULL;\n\
         char * res_data;\n\
-        res_data = process_py_store(\"getAggregatedStuff\", data_ptr, file_sizes, first_exp_id, the_size, &(new_data.db_id));\n\
+        res_data = process_py_store(\"heatDensityMap\", data_ptr, file_sizes, first_db_id, the_size, &(new_data.db_id));\n\
         int data_size = get_data_length();\n\
         new_data.file_path = \"null\";\n\
         new_data.file_buf_len = data_size;\n\
