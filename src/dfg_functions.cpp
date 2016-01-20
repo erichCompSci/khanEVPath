@@ -23,6 +23,7 @@ int dfg_init_func(void)
   FILE *op;
   op = fopen("master.info","w");
   fprintf(op,"%s",test_dfg.str_contact);
+  fflush(op);
   fclose(op);
   router_action = create_router_action_spec(simple_format_list, router_function);
   //Router not necessary at this point....
@@ -212,6 +213,7 @@ void dfg_get_master_contact_func(char *retvalue, char* contact_file)
 }
 
 std::string storage_template = "int i;\n\
+        static chr_time zero;\n\
         char ** data_ptr = (char *) malloc(sizeof(char*) * (the_size + 1));\n\
         long * file_sizes = (long *) malloc(sizeof(long) * the_size);\n\
         char * first_db_id;\n\
@@ -237,6 +239,13 @@ std::string storage_template = "int i;\n\
           new_data.file_buf[i] = res_data[i];\n\
         }\n\
         new_data.exp_id = -1;\n\
+        new_data.start.d1 = 0.0;\n\
+        new_data.start.d2 = 0.0;\n\
+        new_data.start.d3 = 0.0;\n\
+        new_data.end.d1 = 0.0;\n\
+        new_data.end.d2 = 0.0;\n\
+        new_data.end.d3 = 0.0;\n\
+        printf(\"This is the db_id: \%s\\n\", new_data.db_id);\n\
         EVsubmit(0, new_data);\n\
         for(i = 0; i < the_size; ++i)\n\
         {\n\

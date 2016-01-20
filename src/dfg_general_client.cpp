@@ -257,7 +257,6 @@ int main(int argc, char **argv)
     CMlisten(cm);
 
     char master_address[200];
-    dfg_get_master_contact_func(master_address,"master.info");
 
     /*Read the config file*/
     ConfigParser_t cfg_slave;
@@ -390,6 +389,7 @@ int main(int argc, char **argv)
             
     /*  Associate the client */
     char * temp_ptr = strdup(client_node_name.c_str());
+    dfg_get_master_contact_func(master_address,"master.info");
     test_client = EVclient_assoc(cm, temp_ptr, master_address, source_capabilities, sink_capabilities);
     free(temp_ptr);
     temp_ptr = NULL;
@@ -407,7 +407,7 @@ int main(int argc, char **argv)
     PySys_SetObject("path", path);
 
     /*Set up connection to redis */
-    std::string hostname = "localhost";
+    std::string hostname = "kid41";
     int port = 6379;
     init_database_from_client(hostname, port);
 

@@ -13,7 +13,7 @@
 
 #include "ReadIMX.h"
 #include "ReadIM7.h"
-#include<zlib.h>
+#include <zlib.h>
 
 enum IM7PackType_t
 {

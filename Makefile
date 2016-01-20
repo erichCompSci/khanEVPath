@@ -50,22 +50,24 @@ FS_CLIENT_OBJS  = $(patsubst $(SRCDIR)/%.cpp, $(OBJDIR)/%.o, $(FS_CLIENT_SRCS))
 CCX = g++
 CCXFLAGS = -Wall -D_FILE_OFFSET_BITS=64 -Wno-write-strings -g
 
-EVPATH_LIB_DIRS = -L/home/wolf/lib \
-                  -Wl,-rpath=/home/wolf/lib
+EVPATH_LIB_DIRS = -L/net/hp41/chaos/rhe6-64/lib \
+                  -Wl,-rpath=/net/hp41/chaos/rhe6-64/lib
 
-EVPATH_INCLUDE_DIRS = -I/home/wolf/include
+EVPATH_INCLUDE_DIRS = -I/net/hp41/chaos/rhe6-64/include
 
 REDIS_LIB_DIRS  = -L$(PWD)/hiredis -Wl,-rpath=$(PWD)/hiredis 
 REDIS_INCLUDE_DIRS=-I$(PWD)/hiredis
 
-PYTHON_INCLUDE_DIRS = -I/usr/include/python2.7 
-PYTHON_LIB_DIRS = -L/usr/lib/python2.7 -Wl,-rpath=/usr/lib
-
+PYTHON_INCLUDE_DIRS = -I/usr/include/python2.6
+PYTHON_LIB_DIRS = -L/usr/lib64 -Wl,-rpath=/usr/lib64
+# -I/net/hp100/elohrman/Python-2.7.11/Include 
+# -L -Wl,-rpath=/net/hp100/elohrman/Python-2.7.11/Lib
 EVPATH_LIBS  = -latl -levpath -lffs -ldill -lcercs_env -lrt
-PYTHON_LIBS  = -lpython2.7
+PYTHON_LIBS  = -lpython2.6
 REDIS_LIBS   = -lhiredis
 PTHREAD_LIBS = -lpthread
-CURL_LIBS = -lcurl
+CURL_LIBS = 
+#-lcurl
 
 FUSE_LIBS = `pkg-config fuse --cflags --libs`
 

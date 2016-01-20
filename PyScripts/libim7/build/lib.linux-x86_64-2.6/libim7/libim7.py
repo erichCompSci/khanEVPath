@@ -217,6 +217,22 @@ class Buffer(ct.Structure):
             ct.memmove(ct.addressof(self.header), ct.c_char_p(tmp), \
                 ct.sizeof(ImageHeaderX))
             self.reader = "ReadIMX"
+
+    def read_header_mem(self):
+        try:
+            self.header_mem = ImageHeader7()
+            ct.memmove(ct.addressof(self.header_mem), ct.c_char_p(self.mem_addr), \
+              ct.sizeof(ImageHeader7))
+            assert self.header_mem.sizeX==self.nx
+            self.reader = "ReadIM7"
+        except AssertionError:
+            f = file(self.file, 'rb')
+            tmp = f.read(ct.sizeof(ImageHeaderX))
+            f.close()
+            self.header = ImageHeaderX()
+            ct.memmove(ct.addressof(self.header), ct.c_char_p(tmp), \
+                ct.sizeof(ImageHeaderX))
+            self.reader = "ReadIMX"
     
     def get_array(self):
         """ 
@@ -244,6 +260,9 @@ class Buffer(ct.Structure):
         if key=='header':
             self.read_header()
             return self.header
+        elif key=='header_mem':
+            self.read_header_mem()
+            return self.header_mem
         elif key=='blocks':
             self.get_blocks()
             return self.blocks
@@ -263,9 +282,14 @@ class Buffer(ct.Structure):
             self.y = self.y[::-1]
         self.z = 0
         
-    def get_blocks(self):
+    def get_blocks(self, ismem=False):
         " Transforms the concatenated blocks into arrays."
-        h = self.header
+        h = None
+        if(ismem):
+          h = self.header_mem
+        else:
+          h = self.header
+
         arr = self.get_array()
         if (self.reader is "ReadIMX") \
           or (h.buffer_format==Formats['FormatsIMAGE']):
@@ -452,6 +476,23 @@ def imread_errcheck(retval, func, args):
     else:
         pass
 
+
+def imread_errcheck_mem(retval, func, args):
+    if func.__name__!="ReadIM7_MEM":
+        raise ValueError(u"Wrong function passed: %s." % func.__name__)
+    if retval==ImErr['IMREAD_ERR_FILEOPEN']:
+        raise IOError(u"Can't open memory...something wrong.")
+    elif retval==ImErr['IMREAD_ERR_HEADER']:
+        raise ValueError(u"Incorrect header in memory.")
+    elif retval==ImErr['IMREAD_ERR_FORMAT']:
+        raise IOError(u"Incorrect format in memmory.")
+    elif retval==ImErr['IMREAD_ERR_DATA']:
+        raise ValueError(u"Error while reading data in memory.")
+    elif retval==ImErr['IMREAD_ERR_MEMORY']:
+        raise MemoryError(u"Out of memory while reading memory.")
+    else:
+        pass
+
 mylib.SetBufferScale.argtypes = [ct.POINTER(BufferScale), \
     ct.c_float, ct.c_float, ct.c_char_p, ct.c_char_p]
 mylib.SetBufferScale.restype = None
@@ -460,6 +501,11 @@ mylib.ReadIM7.argtypes = [ct.c_char_p, ct.POINTER(Buffer), \
     ct.POINTER(ct.POINTER(AttributeList))]
 mylib.ReadIM7.restype = ct.c_int
 mylib.ReadIM7.errcheck = imread_errcheck
+
+mylib.ReadIM7_MEM.argtypes = [ct.c_char_p, ct.POINTER(Buffer), \
+    ct.POINTER(ct.POINTER(AttributeList)), ct.c_int]
+mylib.ReadIM7_MEM.restype = ct.c_int
+mylib.ReadIM7_MEM.errcheck = imread_errcheck_mem
 
 mylib.DestroyBuffer.argtypes = [ct.POINTER(Buffer),]
 mylib.DestroyBuffer.restype = None
@@ -505,6 +551,48 @@ def readim7(filename, scale_warn= False):
             factor=h.ya, offset=h.yb)
         
     return mybuffer, att
+
+def readim7_mem(mem_address, file_size, scale_warn= False):
+    mybuffer = Buffer()
+    att_pp = ct.pointer(AttributeList())
+    mylib.ReadIM7_MEM(ct.c_char_p(mem_address), ct.byref(mybuffer), ct.byref(att_pp), ct.c_int(file_size))
+    mybuffer.mem_addr = mem_address
+    att = att_pp[0]
+    def from_att(field):
+        tmp = getattr(mybuffer,field)
+        if getattr(tmp,'factor')==0 and getattr(tmp,'offset')==0:
+            if scale_warn:
+                print(u'%s not set in %s' % (field, filename))
+            if field=='scaleX':
+                attv = att.as_dict()['_SCALE_X']
+            elif field=='scaleY':
+                attv = att.as_dict()['_SCALE_Y']
+            elif field=='scaleI':
+                attv = att.as_dict()['_SCALE_I']
+            else:
+                return
+            vals = attv.split(' ')
+            setattr(tmp,'factor', float(vals[0]))
+            vals = vals[1].split('\n')
+            setattr(tmp,'offset', float(vals[0]))
+            setattr(tmp,'unit', vals[1])
+            setattr(tmp,'description', vals[2])
+            
+    mybuffer.get_blocks(ismem=True)
+    from_att('scaleX')
+    from_att('scaleX')
+    from_att('scaleY')
+    from_att('scaleI')
+    if mybuffer.reader is 'ReadIMX':
+        h = mybuffer.header_mem
+        mybuffer.scaleX = BufferScale(description=h.xdim, unit=h.xunits, 
+            factor=h.xa, offset=h.xb)
+        mybuffer.scaleY = BufferScale(description=h.ydim, unit=h.yunits, 
+            factor=h.ya, offset=h.yb)
+        
+    return mybuffer, att
+
+
 
 del_buffer = lambda self: mylib.DestroyBuffer(ct.byref(self))
 del_attributelist = lambda self: mylib.DestroyAttributeList(ct.byref(ct.pointer(self)))

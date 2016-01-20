@@ -297,6 +297,12 @@ int main(int argc, char *argv[])
     usage();
   else
   {
+
+    if(dfg_init_func())
+    {
+      EVmaster_node_join_handler(test_dfg.dfg_master, JoinHandlerFunc);
+      //printf("DFG handler read...\n");
+    }
     not_synced = 1;
     std::vector<std::string> type_names;
     std::string config_file_name = argv[1]; 
@@ -429,11 +435,6 @@ int main(int argc, char *argv[])
     ++test_dfg.node_count;
 
 
-    if(dfg_init_func())
-    {
-      EVmaster_node_join_handler(test_dfg.dfg_master, JoinHandlerFunc);
-      //printf("DFG handler read...\n");
-    }
 
     /*EVsource * master_list_sources = (EVsource *) malloc(sizeof(EVsource) * temp_node_name_list.size());
     
@@ -552,6 +553,11 @@ int main(int argc, char *argv[])
     }
 
     FILE* stores = fopen(store_filename.c_str(), "r");
+    if(!stores)
+    {
+      log_err("Error: failed to open %s!");
+      exit(1);
+    }
     char buffer[100];
     char buffer2[100];
     fscanf(stores, "%s\n", buffer);
@@ -573,6 +579,7 @@ int main(int argc, char *argv[])
     khan_args.port = port;
     khan_args.host = host;
 
+    log_info("Initializing Khan");
     initializing_khan((void*)&khan_args);
     log_info("Initialized Khan");
 
